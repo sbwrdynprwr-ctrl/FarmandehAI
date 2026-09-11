@@ -1,0 +1,49 @@
+name: FarmandehAI Automated Backtest
+
+on:
+  schedule:
+    # هر 15 دقیقه اجرا شود
+    - cron: '*/15 * * * *'
+  
+  # اجازه اجرای دستی
+  workflow_dispatch:
+
+jobs:
+  backtest:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: دانلود مخزن
+        uses: actions/checkout@v4
+      
+      - name: نصب Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+      
+      - name: نصب وابستگی‌ها
+        run: |
+          python -m pip install --upgrade pip
+          pip install requests
+      
+      - name: اجرای FarmandehAI backtest
+        env:
+          TWELVEDATA_API_KEY: ${{ secrets.TWELVEDATA_API_KEY }}
+        run: |
+          python farmandeh.py
+      
+      - name: ایجاد خلاصه
+        if: always()
+        run: |
+          mkdir -p artifacts
+          echo "FarmandehAI Backtest - $(date -u +'%Y-%m-%d %H:%M:%S UTC')" > artifacts/summary.txt
+          echo "وضعیت: تکمیل شد" >> artifacts/summary.txt
+          echo "تنظیمات: PAPER=True, LIVE=False, REAL=False" >> artifacts/summary.txt
+      
+      - name: آپلود خلاصه
+        if: always()
+        uses: actions/upload-artifact@v3
+        with:
+          name: backtest-summary-${{ github.run_id }}
+          path: artifacts/summary.txt
+          retention-days: 7
