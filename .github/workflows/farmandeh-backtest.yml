@@ -42,7 +42,7 @@ jobs:
       
       - name: آپلود خلاصه
         if: always()
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: backtest-summary-${{ github.run_id }}
           path: artifacts/summary.txt
