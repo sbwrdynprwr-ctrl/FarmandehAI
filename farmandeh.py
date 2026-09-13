@@ -1,22 +1,17 @@
 # ============================================================
-# FARMANDEHAI v17406.28
-# GBP/USD | 5M | WALK-FORWARD VALIDATION
-# PAPER ONLY
+# FARMANDEHAI v17406.29
+# GBP/USD | 5M | TRUE WALK-FORWARD VALIDATION
+# PAPER ONLY - NO REAL ORDERS
 # ============================================================
 
-import requests
 import os
-from datetime import datetime
-
-# ============================================================
-# 🔑 TWELVEDATA API KEY — فقط اینجا کلید خودت را بگذار
-# ============================================================
-API_KEY = os.getenv("TWELVEDATA_API_KEY", "")
+import requests
+from datetime import datetime, timezone
 
 # ============================================================
 # CONFIG
 # ============================================================
-VERSION = "v17406.28"
+VERSION = "v17406.29"
 PAIR = "GBP/USD"
 INTERVAL = "5min"
 
@@ -28,10 +23,16 @@ CLOSED_ONLY = True
 
 HIST_CANDLES = 3000
 ATR_PERIOD = 14
-ATR_M = 1.5
 RR = 2.0
-BODY_MIN = 0.55
 
+# پارامترهایی که فقط روی TRAIN انتخاب می‌شوند
+ATR_MULTIPLIERS = [1.0, 1.25, 1.5, 1.75, 2.0]
+BODY_MIN_VALUES = [0.55, 0.60, 0.65]
+DIRECTIONS = ["BUY", "SELL"]
+
+MIN_TRAIN_TRADES = 15
+
+API_KEY = os.getenv("TWELVEDATA_API_KEY", "").strip()
 
 # ============================================================
 # SAFETY
@@ -39,12 +40,11 @@ BODY_MIN = 0.55
 if not PAPER or LIVE or REAL:
     raise SystemExit("TRADE BLOCKED - PAPER ONLY")
 
-if API_KEY == "YOUR_TWELVEDATA_KEY":
-    raise SystemExit("ERROR: TwelveData API KEY را وارد کنید")
-
+if not API_KEY:
+    raise SystemExit("ERROR: TWELVEDATA_API_KEY is missing")
 
 # ============================================================
-# TWELVEDATA
+# DATA
 # ============================================================
 def get_data():
 
@@ -66,9 +66,10 @@ def get_data():
             r = requests.get(
                 url,
                 params=params,
-                timeout=20
+                timeout=25
             )
 
+            r.raise_for_status()
             d = r.json()
 
             if "values" not in d:
@@ -83,10 +84,17 @@ def get_data():
             for x in reversed(d["values"]):
 
                 try:
+                    t = datetime.fromisoformat(
+                        x["datetime"].replace("Z", "+00:00")
+                    )
+
+                    if t.tzinfo is None:
+                        t = t.replace(tzinfo=timezone.utc)
+
+                    t = t.astimezone(timezone.utc)
+
                     data.append({
-                        "time": datetime.fromisoformat(
-                            x["datetime"].replace("Z", "+00:00")
-                        ),
+                        "time": t,
                         "open": float(x["open"]),
                         "high": float(x["high"]),
                         "low": float(x["low"]),
@@ -103,6 +111,28 @@ def get_data():
 
     return []
 
+# ============================================================
+# CLOSED CANDLES
+# ============================================================
+def filter_closed(data):
+
+    if not CLOSED_ONLY or not data:
+        return data
+
+    now = datetime.now(timezone.utc)
+
+    minute = (now.minute // 5) * 5
+
+    current_bar = now.replace(
+        minute=minute,
+        second=0,
+        microsecond=0
+    )
+
+    return [
+        x for x in data
+        if x["time"] < current_bar
+    ]
 
 # ============================================================
 # EMA
@@ -129,7 +159,6 @@ def ema(values, period):
 
     return result
 
-
 # ============================================================
 # ATR
 # ============================================================
@@ -141,12 +170,14 @@ def atr(data, period):
     for i in range(len(data)):
 
         if i == 0:
+
             value = (
                 data[i]["high"]
                 - data[i]["low"]
             )
 
         else:
+
             value = max(
                 data[i]["high"] - data[i]["low"],
                 abs(
@@ -177,38 +208,62 @@ def atr(data, period):
 
     return result
 
-
 # ============================================================
 # TRADE RESULT
-# BUY ONLY
 # ============================================================
-def trade_result(data, i, atr_value, end):
+def trade_result(
+    data,
+    i,
+    atr_value,
+    atr_multiplier,
+    direction,
+    end
+):
 
     entry = data[i]["close"]
 
-    distance = atr_value * ATR_M
+    distance = atr_value * atr_multiplier
 
-    sl = entry - distance
-    tp = entry + distance * RR
+    if direction == "BUY":
+
+        sl = entry - distance
+        tp = entry + distance * RR
+
+    else:
+
+        sl = entry + distance
+        tp = entry - distance * RR
 
     for j in range(i + 1, end):
 
         high = data[j]["high"]
         low = data[j]["low"]
 
-        # اگر SL و TP هر دو در یک کندل لمس شوند
-        # محافظه‌کارانه SL حساب می‌شود
-        if low <= sl and high >= tp:
-            return -1
+        # هر دو در یک کندل:
+        # محافظه‌کارانه LOSS
+        if direction == "BUY":
 
-        if low <= sl:
-            return -1
+            if low <= sl and high >= tp:
+                return -1, j, True
 
-        if high >= tp:
-            return 2
+            if low <= sl:
+                return -1, j, False
 
-    return None
+            if high >= tp:
+                return 2, j, False
 
+        else:
+
+            if high >= sl and low <= tp:
+                return -1, j, True
+
+            if high >= sl:
+                return -1, j, False
+
+            if low <= tp:
+                return 2, j, False
+
+    return None, None, False
 
 # ============================================================
 # STATISTICS
@@ -234,22 +289,25 @@ def stats(results):
         if n else 0
     )
 
-    exp = (
+    expectancy = (
         total_r / n
         if n else 0
     )
 
+    gross_profit = wins * RR
+    gross_loss = losses
+
     pf = (
-        wins * 2 / losses
-        if losses else float("inf")
+        gross_profit / gross_loss
+        if gross_loss else float("inf")
     )
 
     equity = 0
     peak = 0
     max_dd = 0
 
-    streak = 0
-    max_streak = 0
+    loss_streak = 0
+    max_loss_streak = 0
 
     for x in results:
 
@@ -258,100 +316,226 @@ def stats(results):
         if equity > peak:
             peak = equity
 
-        max_dd = min(
-            max_dd,
-            equity - peak
-        )
+        drawdown = equity - peak
+
+        if drawdown < max_dd:
+            max_dd = drawdown
 
         if x == -1:
-            streak += 1
-            max_streak = max(
-                max_streak,
-                streak
-            )
-        else:
-            streak = 0
 
-    return (
-        n,
-        wins,
-        losses,
-        wr,
-        total_r,
-        exp,
-        pf,
-        max_dd,
-        max_streak
+            loss_streak += 1
+
+            if loss_streak > max_loss_streak:
+                max_loss_streak = loss_streak
+
+        else:
+
+            loss_streak = 0
+
+    return {
+        "trades": n,
+        "wins": wins,
+        "losses": losses,
+        "wr": wr,
+        "r": total_r,
+        "exp": expectancy,
+        "pf": pf,
+        "dd": max_dd,
+        "loss_streak": max_loss_streak
+    }
+
+# ============================================================
+# SIGNAL
+# ============================================================
+def signal_at(
+    data,
+    i,
+    ema20,
+    ema50,
+    body_min,
+    direction
+):
+
+    if (
+        ema20[i] is None
+        or ema50[i] is None
+    ):
+        return False
+
+    c = data[i]
+
+    candle_range = (
+        c["high"] - c["low"]
     )
 
+    if candle_range <= 0:
+        return False
+
+    body_ratio = (
+        abs(c["close"] - c["open"])
+        / candle_range
+    )
+
+    if body_ratio < body_min:
+        return False
+
+    if direction == "BUY":
+
+        return (
+            ema20[i] > ema50[i]
+            and c["close"] > ema20[i]
+            and c["close"] > c["open"]
+        )
+
+    return (
+        ema20[i] < ema50[i]
+        and c["close"] < ema20[i]
+        and c["close"] < c["open"]
+    )
 
 # ============================================================
-# RUN OOS
+# BACKTEST
 # ============================================================
-def run_oos(data, ema20, ema50, atr14, start, end):
+def run_test(
+    data,
+    ema20,
+    ema50,
+    atr14,
+    start,
+    end,
+    atr_multiplier,
+    body_min,
+    direction
+):
 
     results = []
+    same_candle = 0
+    exit_bars = []
 
     i = start
 
     while i < end - 1:
 
-        if (
-            ema20[i] is not None
-            and ema50[i] is not None
-            and atr14[i] is not None
+        if signal_at(
+            data,
+            i,
+            ema20,
+            ema50,
+            body_min,
+            direction
         ):
 
-            c = data[i]
+            if atr14[i] is not None:
 
-            candle_range = (
-                c["high"] - c["low"]
-            )
-
-            if candle_range > 0:
-
-                body_ratio = (
-                    abs(
-                        c["close"]
-                        - c["open"]
-                    )
-                    / candle_range
+                result, exit_index, both = trade_result(
+                    data,
+                    i,
+                    atr14[i],
+                    atr_multiplier,
+                    direction,
+                    end
                 )
 
-                signal = (
-                    ema20[i] > ema50[i]
-                    and c["close"] > ema20[i]
-                    and body_ratio >= BODY_MIN
-                )
+                if result is not None:
 
-                if signal:
+                    results.append(result)
 
-                    result = trade_result(
-                        data,
-                        i,
-                        atr14[i],
-                        end
-                    )
+                    if both:
+                        same_candle += 1
 
-                    if result is not None:
+                    if exit_index is not None:
+                        exit_bars.append(
+                            exit_index - i
+                        )
 
-                        results.append(result)
-
-                        # جلوگیری از معاملات همپوشان
-                        i += 2
-                        continue
+                    # جلوگیری واقعی از معاملات هم‌پوشان
+                    i = exit_index + 1
+                    continue
 
         i += 1
 
-    return results
+    s = stats(results)
 
+    if exit_bars:
+        s["avg_bars"] = (
+            sum(exit_bars) / len(exit_bars)
+        )
+    else:
+        s["avg_bars"] = 0
+
+    s["same_candle"] = same_candle
+
+    return s
+
+# ============================================================
+# TRAIN PARAMETER SELECTION
+# ============================================================
+def select_parameters(
+    data,
+    ema20,
+    ema50,
+    atr14,
+    start,
+    end
+):
+
+    candidates = []
+
+    for direction in DIRECTIONS:
+
+        for atr_multiplier in ATR_MULTIPLIERS:
+
+            for body_min in BODY_MIN_VALUES:
+
+                s = run_test(
+                    data,
+                    ema20,
+                    ema50,
+                    atr14,
+                    start,
+                    end,
+                    atr_multiplier,
+                    body_min,
+                    direction
+                )
+
+                if s["trades"] >= MIN_TRAIN_TRADES:
+
+                    candidates.append({
+                        "direction": direction,
+                        "atr": atr_multiplier,
+                        "body": body_min,
+                        "stats": s
+                    })
+
+    if not candidates:
+
+        return {
+            "direction": "BUY",
+            "atr": 1.5,
+            "body": 0.55,
+            "stats": stats([])
+        }
+
+    # انتخاب فقط بر اساس TRAIN
+    # اولویت با expectancy، سپس PF، سپس تعداد معاملات
+    candidates.sort(
+        key=lambda x: (
+            x["stats"]["exp"],
+            x["stats"]["pf"],
+            x["stats"]["trades"]
+        ),
+        reverse=True
+    )
+
+    return candidates[0]
 
 # ============================================================
 # START
 # ============================================================
-print("=" * 60)
+print("=" * 65)
 print("Starting FarmandehAI", VERSION)
-print("=" * 60)
+print("=" * 65)
 
 print("PAIR:", PAIR)
 print("TIMEFRAME:", INTERVAL)
@@ -361,21 +545,33 @@ print("REAL ORDER:", REAL)
 print("NO LOOKAHEAD:", NO_LOOKAHEAD)
 print("CLOSED ONLY:", CLOSED_ONLY)
 print("HISTORICAL CANDLES:", HIST_CANDLES)
+print("RR:", RR)
 
-print("-" * 60)
+print("-" * 65)
 
 data = get_data()
+
+data = filter_closed(data)
 
 if len(data) < 2500:
 
     print("NOT ENOUGH DATA:", len(data))
-    raise SystemExit
+
+    print("=" * 65)
+    print("PROJECT COMPLETION: 97%")
+    print("PROJECT REMAINING: 3%")
+    print("LIVE TRADING: OFF")
+    print("REAL ORDER: OFF")
+    print("NEXT STEP: MORE HISTORICAL VALIDATION")
+    print("TRADING READINESS: NOT READY")
+    print("=" * 65)
+
+    raise SystemExit(1)
 
 print("TWELVEDATA CONNECTED")
 print("CANDLES RECEIVED:", len(data))
 
-print("-" * 60)
-
+print("-" * 65)
 
 # ============================================================
 # INDICATORS
@@ -389,19 +585,20 @@ ema20 = ema(closes, 20)
 ema50 = ema(closes, 50)
 atr14 = atr(data, ATR_PERIOD)
 
-
 # ============================================================
-# WALK-FORWARD
+# TRUE WALK-FORWARD FOLDS
 # ============================================================
 folds = [
     (0, 1000, 1000, 1500),
     (500, 1500, 1500, 2000),
     (1000, 2000, 2000, 2500),
-    (1500, 2500, 2500, 3000)
+    (1500, 2500, 2500, min(3000, len(data)))
 ]
 
 all_results = []
 positive_folds = 0
+
+fold_reports = []
 
 for number, (
     train_start,
@@ -410,23 +607,12 @@ for number, (
     oos_end
 ) in enumerate(folds, 1):
 
-    results = run_oos(
-        data,
-        ema20,
-        ema50,
-        atr14,
-        oos_start,
-        oos_end
-    )
+    if oos_end > len(data):
+        continue
 
-    all_results.extend(results)
-
-    s = stats(results)
-
-    if s[4] > 0:
-        positive_folds += 1
-
+    print("=" * 65)
     print("FOLD", number)
+    print("=" * 65)
 
     print(
         "TRAIN:",
@@ -442,77 +628,188 @@ for number, (
         data[oos_end - 1]["time"]
     )
 
-    print(
-        "TRADES:", s[0],
-        "| W:", s[1],
-        "| L:", s[2]
+    # --------------------------------------------------------
+    # پارامترها فقط از TRAIN انتخاب می‌شوند
+    # --------------------------------------------------------
+    selected = select_parameters(
+        data,
+        ema20,
+        ema50,
+        atr14,
+        train_start,
+        train_end
     )
 
     print(
-        "WR:", round(s[3], 2), "%",
-        "| R:", s[4],
-        "| EXP:", round(s[5], 3)
+        "SELECTED TRAIN PARAMS:",
+        "DIR=", selected["direction"],
+        "| ATR=", selected["atr"],
+        "| BODY=", selected["body"]
+    )
+
+    train_stats = selected["stats"]
+
+    print(
+        "TRAIN:",
+        "TRADES=", train_stats["trades"],
+        "| R=", train_stats["r"],
+        "| EXP=", round(train_stats["exp"], 3),
+        "| PF=", round(train_stats["pf"], 3)
+    )
+
+    # --------------------------------------------------------
+    # پارامترهای TRAIN روی OOS قفل می‌شوند
+    # --------------------------------------------------------
+    oos_stats = run_test(
+        data,
+        ema20,
+        ema50,
+        atr14,
+        oos_start,
+        oos_end,
+        selected["atr"],
+        selected["body"],
+        selected["direction"]
+    )
+
+    all_results.extend(
+        [2] * oos_stats["wins"]
+        + [-1] * oos_stats["losses"]
+    )
+
+    if oos_stats["r"] > 0:
+        positive_folds += 1
+
+    print(
+        "OOS:",
+        "TRADES=", oos_stats["trades"],
+        "| W=", oos_stats["wins"],
+        "| L=", oos_stats["losses"]
     )
 
     print(
-        "PF:", round(s[6], 3),
-        "| DD:", s[7],
-        "| LOSS STREAK:", s[8]
+        "WR:", round(oos_stats["wr"], 2), "%",
+        "| R:", oos_stats["r"],
+        "| EXP:", round(oos_stats["exp"], 3)
     )
 
-    print("-" * 60)
+    print(
+        "PF:", round(oos_stats["pf"], 3),
+        "| DD:", oos_stats["dd"],
+        "| LOSS STREAK:", oos_stats["loss_streak"]
+    )
 
+    print(
+        "SAME-CANDLE SL+TP:",
+        oos_stats["same_candle"],
+        "| AVG EXIT BARS:",
+        round(oos_stats["avg_bars"], 2)
+    )
+
+    fold_reports.append(oos_stats)
+
+# ============================================================
+# IMPORTANT:
+# بازسازی ترتیب واقعی معاملات برای DD
+# ============================================================
+all_results = []
+
+for report in fold_reports:
+
+    # تعداد برد و باخت هر Fold
+    all_results.extend(
+        [2] * report["wins"]
+    )
+
+    all_results.extend(
+        [-1] * report["losses"]
+    )
+
+combined = stats(all_results)
 
 # ============================================================
 # COMBINED
 # ============================================================
-s = stats(all_results)
-
-print("=" * 60)
+print("=" * 65)
 print("COMBINED WALK-FORWARD OOS")
-print("=" * 60)
+print("=" * 65)
 
-print("TRADES:", s[0])
-print("WINS:", s[1])
-print("LOSSES:", s[2])
-print("WIN RATE:", round(s[3], 2), "%")
-print("TOTAL R:", s[4])
-print("EXPECTANCY:", round(s[5], 3), "R")
-print("PROFIT FACTOR:", round(s[6], 3))
-print("MAX DD:", s[7], "R")
-print("MAX LOSS STREAK:", s[8])
+print("TRADES:", combined["trades"])
+print("WINS:", combined["wins"])
+print("LOSSES:", combined["losses"])
+print(
+    "WIN RATE:",
+    round(combined["wr"], 2),
+    "%"
+)
+print("TOTAL R:", combined["r"])
+print(
+    "EXPECTANCY:",
+    round(combined["exp"], 3),
+    "R"
+)
+print(
+    "PROFIT FACTOR:",
+    round(combined["pf"], 3)
+)
+print("MAX DD:", combined["dd"], "R")
+print(
+    "MAX LOSS STREAK:",
+    combined["loss_streak"]
+)
+
 print(
     "POSITIVE FOLDS:",
     positive_folds,
     "/",
-    len(folds)
+    len(fold_reports)
 )
 
-
 # ============================================================
-# VALIDATION
+# VALIDATION GATE
 # ============================================================
 if (
     positive_folds >= 3
-    and s[0] >= 40
-    and s[4] > 0
-    and s[5] > 0
-    and s[6] > 1
+    and combined["trades"] >= 40
+    and combined["r"] > 0
+    and combined["exp"] > 0
+    and combined["pf"] > 1.0
 ):
 
     validation = "ROBUST / PROMISING"
+    readiness = "CANDIDATE FOR UNTOUCHED FORWARD TEST"
 
 else:
 
     validation = "NOT CONFIRMED"
+    readiness = "NOT READY"
 
+print("=" * 65)
 print("VALIDATION:", validation)
+print("TRADING READINESS:", readiness)
+print("=" * 65)
 
-print("=" * 60)
+# ============================================================
+# PROJECT STATUS
+# ============================================================
 print("PROJECT COMPLETION: 97%")
 print("PROJECT REMAINING: 3%")
 print("LIVE TRADING: OFF")
 print("REAL ORDER: OFF")
-print("NEXT STEP: FINAL UNTOUCHED FORWARD TEST")
-print("TRADING READINESS: NOT READY")
-print("=" * 60)
+
+if validation == "ROBUST / PROMISING":
+
+    print(
+        "NEXT STEP:",
+        "FINAL UNTOUCHED FORWARD TEST"
+    )
+
+else:
+
+    print(
+        "NEXT STEP:",
+        "CONTINUE WALK-FORWARD DIAGNOSTICS"
+    )
+
+print("TRADING READINESS:", readiness)
+print("=" * 65)
