@@ -1,10 +1,7 @@
-name: FarmandehAI Automated Backtest
-
 on:
+  workflow_dispatch:
   schedule:
-    # هر 15 دقیقه اجرا شود
     - cron: '*/15 * * * *'
-  
   # اجازه اجرای دستی
   workflow_dispatch:
 
