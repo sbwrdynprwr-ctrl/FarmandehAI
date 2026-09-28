@@ -4,6 +4,10 @@ import argparse
 import json
 import subprocess
 import sys
+import os
+import threading
+from functools import partial
+from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 
 from data.loader import DataConfig, fetch_twelvedata, load_csv
 from strategy.strategy import StrategyParams
@@ -35,6 +39,14 @@ def main():
 
     if args.run_tests:
         raise SystemExit(subprocess.call([sys.executable, "-m", "pytest", "-q"]))
+
+    http_server = None
+    if args.serve:
+        port = int(os.environ.get("PORT", "8080"))
+        handler = partial(SimpleHTTPRequestHandler, directory="artifacts")
+        http_server = ThreadingHTTPServer(("0.0.0.0", port), handler)
+        threading.Thread(target=http_server.serve_forever, daemon=True).start()
+        print(f"RESEARCH_HTTP_PORT={port}", flush=True)
 
     df = load_csv(args.csv) if args.csv else fetch_twelvedata(DataConfig(), days=args.days)
     print(f"DATA_ROWS={len(df)}", flush=True)
@@ -89,13 +101,8 @@ def main():
     )
     print("FARMANDEHAI_RESEARCH_DONE", flush=True)
     if args.serve:
-        import os
-        from functools import partial
-        from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
-        port = int(os.environ.get("PORT", "8080"))
-        handler = partial(SimpleHTTPRequestHandler, directory="artifacts")
-        print(f"RESEARCH_HTTP_PORT={port}", flush=True)
-        ThreadingHTTPServer(("0.0.0.0", port), handler).serve_forever()
+        print("RESEARCH_HTTP_READY", flush=True)
+        threading.Event().wait()
 
     print(json.dumps({
         "baseline_backtest": bm,
