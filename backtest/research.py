@@ -22,13 +22,16 @@ def _score(m):
 
 def parameter_candidates():
     # Small, reproducible neighborhood around the baseline.
+    # Keep the search deliberately compact so a 60-day research run completes
+    # reliably on a small Railway container while still covering the baseline
+    # and nearby parameter region required by the research spec.
     for ef, es, rp, am, rr, bm in itertools.product(
-        (15, 20, 25),
-        (40, 50, 60),
-        (12, 14),
+        (20, 25),
+        (45, 50, 55),
+        (14,),
         (1.25, 1.5),
         (1.5, 2.0),
-        (0.50, 0.55),
+        (0.55,),
     ):
         if ef >= es:
             continue
@@ -85,6 +88,7 @@ def walk_forward_search(df: pd.DataFrame, folds: int = 4, train_ratio: float = 0
     folds_out = []
     combined = []
     for k in range(folds):
+        print(f"RESEARCH_FOLD_START={k + 1}/{folds}", flush=True)
         oos_start = first_oos + k * oos_size
         oos_end = first_oos + (k + 1) * oos_size if k < folds - 1 else n
         train = df.iloc[:oos_start].reset_index(drop=True)
@@ -105,6 +109,11 @@ def walk_forward_search(df: pd.DataFrame, folds: int = 4, train_ratio: float = 0
             "trades": oos_trades,
         })
         combined.extend(oos_trades)
+        print(
+            f"RESEARCH_FOLD_COMPLETE={k + 1}/{folds} "
+            f"trades={oos_m['trades']} total_r={oos_m['total_r']}",
+            flush=True,
+        )
     return folds_out, metrics([t.r for t in combined])
 
 
