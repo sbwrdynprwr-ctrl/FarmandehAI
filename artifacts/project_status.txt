@@ -1,12 +1,17 @@
-PROJECT COMPLETION: 85%
-PROJECT REMAINING: 15%
-VERSION: v0.1.4-checkpoint
+PROJECT COMPLETION: 90%
+PROJECT REMAINING: 10%
+VERSION: v0.2.0-research
 LIVE TRADING: OFF
 REAL ORDER: OFF
 PAPER TRADING: ON
-TESTS: 7 passed
-COMPILE: PASSED
-API SECRET: NOT STORED IN PROJECT FILES
-REAL HISTORICAL BACKTEST: NOT EXECUTED IN THIS ENVIRONMENT
+SAFETY LOCKS: VERIFIED
+TESTS: 10 passed
+DATA: 17,275 GBP/USD 5-minute candles retrieved in the 60-day run
+BASELINE WALK-FORWARD: 249 trades, 26.51% win rate, -51.00R, PF 0.7213, max DD 53R, max loss streak 14
+TRAIN_ONLY_PARAMETER_SEARCH: IMPLEMENTED
+OOS_EVALUATION: IMPLEMENTED
+ROBUSTNESS: IMPLEMENTED
+MONTE_CARLO: IMPLEMENTED
+60_DAY_RESEARCH: NOT COMPLETED — Railway stopped the batch before research-fold output
 VALIDATION: NOT CONFIRMED
-NEXT STEP: Execute genuine GBP/USD 5-minute historical download from TWELVEDATA_API_KEY in a network-enabled environment, then run Backtest, Walk-Forward, and Robustness analysis.
+NEXT STEP: Run the research stage in a persistent Railway batch/web process, capture all OOS folds, robustness and Monte Carlo results, then reassess validation.
