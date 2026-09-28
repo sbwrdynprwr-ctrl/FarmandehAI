@@ -1,0 +1,20 @@
+{
+  "symbol": "GBP/USD",
+  "timeframe": "5min",
+  "data_source": "twelvedata",
+  "paper": true,
+  "live": false,
+  "real": false,
+  "no_lookahead": true,
+  "closed_only": true,
+  "ema_fast": 20,
+  "ema_slow": 50,
+  "rsi_period": 14,
+  "atr_period": 14,
+  "atr_multiplier": 1.5,
+  "rr": 2.0,
+  "body_min": 0.55,
+  "risk_per_trade": 0.01,
+  "spread_pips": 0.0,
+  "initial_equity": 10000.0
+}
