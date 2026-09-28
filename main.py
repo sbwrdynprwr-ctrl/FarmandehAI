@@ -48,7 +48,7 @@ def main():
     if args.research:
         research_folds, research_combined = walk_forward_search(df, args.folds)
         for f in research_folds:
-            print(f"RESEARCH_FOLD={json.dumps({k:v for k,v in f.items() if k != \"trades\"}, default=str)}", flush=True)
+            print(f"RESEARCH_FOLD={json.dumps({k: v for k, v in f.items() if k != 'trades'}, default=str)}", flush=True)
         research_robustness = robustness(df, research_folds)
         print(f"ROBUSTNESS={json.dumps(research_robustness, default=str)}", flush=True)
         research_mc = monte_carlo(
