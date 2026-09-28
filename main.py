@@ -30,6 +30,7 @@ def main():
     ap.add_argument("--folds", type=int, default=4)
     ap.add_argument("--research", action="store_true")
     ap.add_argument("--run-tests", action="store_true")
+    ap.add_argument("--serve", action="store_true")
     args = ap.parse_args()
 
     if args.run_tests:
@@ -87,6 +88,15 @@ def main():
         research=research,
     )
     print("FARMANDEHAI_RESEARCH_DONE", flush=True)
+    if args.serve:
+        import os
+        from functools import partial
+        from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
+        port = int(os.environ.get("PORT", "8080"))
+        handler = partial(SimpleHTTPRequestHandler, directory="artifacts")
+        print(f"RESEARCH_HTTP_PORT={port}", flush=True)
+        ThreadingHTTPServer(("0.0.0.0", port), handler).serve_forever()
+
     print(json.dumps({
         "baseline_backtest": bm,
         "baseline_walk_forward": wfm,
