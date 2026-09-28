@@ -23,6 +23,7 @@ if LIVE or REAL:
 
 
 def main():
+    print("FARMANDEHAI_RESEARCH_START", flush=True)
     ap = argparse.ArgumentParser()
     ap.add_argument("--csv")
     ap.add_argument("--days", type=int, default=30)
@@ -35,20 +36,27 @@ def main():
         raise SystemExit(subprocess.call([sys.executable, "-m", "pytest", "-q"]))
 
     df = load_csv(args.csv) if args.csv else fetch_twelvedata(DataConfig(), days=args.days)
+    print(f"DATA_ROWS={len(df)}", flush=True)
     baseline = StrategyParams()
     baseline_trades = run_backtest(df, baseline)
     bm = metrics([t.r for t in baseline_trades])
 
     wf, wfm = walk_forward(df, baseline, args.folds)
+    print(f"BASELINE_WF={json.dumps(wfm)}", flush=True)
     research = None
     if args.research:
         research_folds, research_combined = walk_forward_search(df, args.folds)
+        for f in research_folds:
+            print(f"RESEARCH_FOLD={json.dumps({k:v for k,v in f.items() if k != \"trades\"}, default=str)}", flush=True)
         research_robustness = robustness(df, research_folds)
+        print(f"ROBUSTNESS={json.dumps(research_robustness, default=str)}", flush=True)
         research_mc = monte_carlo(
             [t.r for f in research_folds for t in f["trades"]],
             simulations=1000,
             seed=42,
         )
+        print(f"MONTE_CARLO={json.dumps(research_mc)}", flush=True)
+        print(f"RESEARCH_COMBINED={json.dumps(research_combined)}", flush=True)
         research = {
             "folds": research_folds,
             "combined": research_combined,
@@ -78,6 +86,7 @@ def main():
         status,
         research=research,
     )
+    print("FARMANDEHAI_RESEARCH_DONE", flush=True)
     print(json.dumps({
         "baseline_backtest": bm,
         "baseline_walk_forward": wfm,
