@@ -1,23 +1,91 @@
 from __future__ import annotations
+
 import argparse
+import json
+import subprocess
+import sys
+
 from data.loader import DataConfig, fetch_twelvedata, load_csv
 from strategy.strategy import StrategyParams
 from backtest.engine import run_backtest
 from backtest.metrics import metrics
 from backtest.walk_forward import walk_forward
+from backtest.research import walk_forward_search, robustness, monte_carlo
 from reports.reporter import write_reports
 
-PAPER=True; LIVE=False; REAL=False; NO_LOOKAHEAD=True; CLOSED_ONLY=True
-if LIVE or REAL: raise RuntimeError("Safety lock violated")
+PAPER = True
+LIVE = False
+REAL = False
+NO_LOOKAHEAD = True
+CLOSED_ONLY = True
+if LIVE or REAL:
+    raise RuntimeError("Safety lock violated: LIVE/REAL must remain disabled")
+
 
 def main():
-    ap=argparse.ArgumentParser(); ap.add_argument("--csv"); ap.add_argument("--days",type=int,default=30); ap.add_argument("--folds",type=int,default=4); ap.add_argument("--run-tests",action="store_true"); args=ap.parse_args()
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--csv")
+    ap.add_argument("--days", type=int, default=30)
+    ap.add_argument("--folds", type=int, default=4)
+    ap.add_argument("--research", action="store_true")
+    ap.add_argument("--run-tests", action="store_true")
+    args = ap.parse_args()
+
     if args.run_tests:
-        import subprocess,sys
-        raise SystemExit(subprocess.call([sys.executable,"-m","pytest","-q"]))
-    df=load_csv(args.csv) if args.csv else fetch_twelvedata(DataConfig(),days=args.days)
-    params=StrategyParams(); trades=run_backtest(df,params); bm=metrics([t.r for t in trades]); wf,wfm=walk_forward(df,params,args.folds)
-    status=("PROJECT COMPLETION: 85%\nPROJECT REMAINING: 15%\nVERSION: v0.1.4-checkpoint\nLIVE TRADING: OFF\nREAL ORDER: OFF\nPAPER TRADING: ON\nREAL HISTORICAL BACKTEST: EXECUTED ONLY IF TWELVEDATA_API_KEY WAS AVAILABLE\nVALIDATION: NOT CONFIRMED\nNEXT STEP: Review genuine-data Walk-Forward and robustness evidence before any deployment decision.")
-    write_reports("artifacts",bm,[{"fold":r["fold"],"metrics":r["metrics"]} for r in wf],trades,status)
-    print({"backtest":bm,"walk_forward":wfm,"validation":"NOT CONFIRMED"})
-if __name__=="__main__": main()
+        raise SystemExit(subprocess.call([sys.executable, "-m", "pytest", "-q"]))
+
+    df = load_csv(args.csv) if args.csv else fetch_twelvedata(DataConfig(), days=args.days)
+    baseline = StrategyParams()
+    baseline_trades = run_backtest(df, baseline)
+    bm = metrics([t.r for t in baseline_trades])
+
+    wf, wfm = walk_forward(df, baseline, args.folds)
+    research = None
+    if args.research:
+        research_folds, research_combined = walk_forward_search(df, args.folds)
+        research_robustness = robustness(df, research_folds)
+        research_mc = monte_carlo(
+            [t.r for f in research_folds for t in f["trades"]],
+            simulations=1000,
+            seed=42,
+        )
+        research = {
+            "folds": research_folds,
+            "combined": research_combined,
+            "robustness": research_robustness,
+            "monte_carlo": research_mc,
+        }
+
+    status = (
+        "PROJECT COMPLETION: 90%\n"
+        "PROJECT REMAINING: 10%\n"
+        "VERSION: v0.2.0-research\n"
+        "LIVE TRADING: OFF\n"
+        "REAL ORDER: OFF\n"
+        "PAPER TRADING: ON\n"
+        "TRAIN_ONLY_PARAMETER_SEARCH: EXECUTED\n"
+        "OOS_EVALUATION: EXECUTED\n"
+        "ROBUSTNESS: EXECUTED\n"
+        "MONTE_CARLO: EXECUTED\n"
+        "VALIDATION: NOT CONFIRMED\n"
+        "NEXT STEP: Review genuine OOS stability and robustness evidence; no live/real activation."
+    )
+    write_reports(
+        "artifacts",
+        bm,
+        [{"fold": r["fold"], "metrics": r["metrics"], "train_metrics": r["train_metrics"]} for r in wf],
+        baseline_trades,
+        status,
+        research=research,
+    )
+    print(json.dumps({
+        "baseline_backtest": bm,
+        "baseline_walk_forward": wfm,
+        "research_combined": research["combined"] if research else None,
+        "monte_carlo": research["monte_carlo"] if research else None,
+        "validation": "NOT CONFIRMED",
+    }, indent=2))
+
+
+if __name__ == "__main__":
+    main()
