@@ -1,0 +1,4 @@
+pandas>=2.0,<4
+numpy>=1.24,<3
+requests>=2.31,<3
+pytest>=8,<9
