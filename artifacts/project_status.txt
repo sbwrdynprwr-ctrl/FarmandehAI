@@ -1,18 +1,18 @@
 PROJECT COMPLETION: 96%
 PROJECT REMAINING: 4%
-VERSION: v0.2.5-hypothesis-warmup-fix
+VERSION: v0.2.6-test-isolation
 LIVE TRADING: OFF
 REAL ORDER: OFF
 PAPER TRADING: ON
 SAFETY LOCKS: VERIFIED
-STRATEGY FIX: Hypothesis-specific warm-up requirements; Breakout no longer incorrectly waits for EMA slow period
-LATEST STRATEGY COMMIT: 2e93b032747cee393e10f3365831ce71ae11c628
-TESTS: 10 passed before latest pullback change; latest full suite still pending independent execution
+STRATEGY FIX: Hypothesis-specific warm-up requirements
+TEST ISOLATION FIX: Removed network bootstrap from main startup; --run-tests now uses repository code directly
+TESTS: 10 passed before latest test-isolation change; latest full suite still requires independent execution
 HYPOTHESIS RESEARCH: TREND + MEAN_REVERSION + BREAKOUT + PULLBACK EXECUTED
 60-DAY DATA: 17,275 GBP/USD 5-minute candles retrieved from Twelve Data
-LATEST PULLBACK OOS RUN: 33 trades, 36.36% win rate, -1.00R, expectancy -0.0303R, PF 0.9524, max DD 6.5R, max loss streak 6
+PULLBACK OOS: 33 trades, 36.36% win rate, -1.00R, expectancy -0.0303R, PF 0.9524, max DD 6.5R, max loss streak 6
 PULLBACK ROBUSTNESS: neighbor-positive rates by fold 0%, 66.7%, 83.3%, 0%
 PULLBACK MONTE CARLO: p50 max DD 7.5R, p95 11R, max 17.5R, terminal -1R
 VALIDATION: NOT CONFIRMED
-RAILWAY: Latest deployment 24b572cf-5bfa-4cba-842d-76a2873ec740 remains DEPLOYING; build phase completed, runtime completion not yet verified
-NEXT STEP: Verify latest deployment runtime and execute the complete test suite; continue independent validation. Never activate live/real trading without confirmed validation.
+RAILWAY: Latest verified full research deployment d0344503-6c8d-4fe4-b473-b37c9d765bfc completed successfully; new deployment attempts are currently paused
+NEXT STEP: Run the independent full test suite when deployment execution is available; continue OOS validation. Never activate live/real trading without confirmed validation.
