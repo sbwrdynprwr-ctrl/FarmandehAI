@@ -48,11 +48,24 @@ def breakout_candidates():
                              donchian_period=dp)
 
 
+def pullback_candidates():
+    for ef, es, am, rr, bm in itertools.product(
+        (15, 20, 25), (45, 50, 55), (1.25, 1.5), (1.5, 2.0), (0.45, 0.55),
+    ):
+        if ef >= es:
+            continue
+        yield StrategyParams(ema_fast=ef, ema_slow=es, rsi_period=14,
+                             atr_period=14, atr_multiplier=am, rr=rr,
+                             body_min=bm, hypothesis="pullback")
+
+
 def _candidates_for(hypothesis):
     if hypothesis == "mean_reversion":
         return list(mean_reversion_candidates())
     if hypothesis == "breakout":
         return list(breakout_candidates())
+    if hypothesis == "pullback":
+        return list(pullback_candidates())
     return list(parameter_candidates())
 
 
