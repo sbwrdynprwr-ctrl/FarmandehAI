@@ -1,18 +1,19 @@
 PROJECT COMPLETION: 96%
 PROJECT REMAINING: 4%
-VERSION: v0.2.6-test-isolation
+VERSION: v0.2.7-ci-isolation
 LIVE TRADING: OFF
 REAL ORDER: OFF
 PAPER TRADING: ON
 SAFETY LOCKS: VERIFIED
 STRATEGY FIX: Hypothesis-specific warm-up requirements
-TEST ISOLATION FIX: Removed network bootstrap from main startup; --run-tests now uses repository code directly
-TESTS: 10 passed before latest test-isolation change; latest full suite still requires independent execution
+TEST ISOLATION FIX: Repository test command is network-independent
+CI: Added GitHub Actions compile + pytest workflow
+TESTS: Independent latest full-suite result still pending; do not claim pass without execution evidence
 HYPOTHESIS RESEARCH: TREND + MEAN_REVERSION + BREAKOUT + PULLBACK EXECUTED
 60-DAY DATA: 17,275 GBP/USD 5-minute candles retrieved from Twelve Data
 PULLBACK OOS: 33 trades, 36.36% win rate, -1.00R, expectancy -0.0303R, PF 0.9524, max DD 6.5R, max loss streak 6
 PULLBACK ROBUSTNESS: neighbor-positive rates by fold 0%, 66.7%, 83.3%, 0%
 PULLBACK MONTE CARLO: p50 max DD 7.5R, p95 11R, max 17.5R, terminal -1R
 VALIDATION: NOT CONFIRMED
-RAILWAY: Latest verified full research deployment d0344503-6c8d-4fe4-b473-b37c9d765bfc completed successfully; new deployment attempts are currently paused
-NEXT STEP: Run the independent full test suite when deployment execution is available; continue OOS validation. Never activate live/real trading without confirmed validation.
+RAILWAY: Main service start command restored to 60-day four-hypothesis research; Railway currently has a stuck BUILDING deployment. A separate test service was created, but its initial deployment is still INITIALIZING.
+NEXT STEP: Obtain an independent CI/Railway test result, then rerun research only if data access succeeds. Never activate live/real trading without confirmed validation.
