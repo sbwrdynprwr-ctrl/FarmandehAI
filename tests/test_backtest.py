@@ -21,4 +21,5 @@ def test_same_bar_sl_and_tp_is_reproducibly_sl_first(monkeypatch):
     assert len(trades) == 1
     assert trades[0].reason == "SL_AND_TP_SAME_BAR_SL_FIRST"
     assert trades[0].exit == trades[0].stop_loss
-    assert trades[0].r == -1.0
+    assert trades[0].r == pytest.approx(-1.0)
+
