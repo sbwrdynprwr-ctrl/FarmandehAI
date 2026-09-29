@@ -1,21 +1,11 @@
 PROJECT COMPLETION: 95%
 PROJECT REMAINING: 5%
-VERSION: v0.2.1-research-complete
+VERSION: v0.2.2-hypothesis-research
 LIVE TRADING: OFF
 REAL ORDER: OFF
 PAPER TRADING: ON
 SAFETY LOCKS: VERIFIED
 TESTS: 10 passed
-DATA: 17,275 GBP/USD 5-minute candles retrieved in the 60-day run
-BASELINE WALK-FORWARD: 249 trades, 26.51% win rate, -51.00R, PF 0.7213, max DD 53R, max loss streak 14
-RESEARCH_COMBINED: 335 trades, 32.84% win rate, -54.00R, PF 0.7600, max DD 55.50R, max loss streak 17
-OOS_FOLDS: 4 completed; OOS total R = -54.00R
-OOS_FOLD_TOTALS_R: fold1 -29.00R, fold2 -20.00R, fold3 +6.50R, fold4 -11.50R
-TRAIN_ONLY_PARAMETER_SEARCH: IMPLEMENTED
-OOS_EVALUATION: IMPLEMENTED
-ROBUSTNESS: COMPLETED — 12 neighbors/fold; positive-neighbor rates: 0%, 0%, 91.67%, 0%
-SPREAD_SENSITIVITY: COMPLETED — tested 0, 0.00005 and 0.00010 spread assumptions
-MONTE_CARLO: COMPLETED — 1,000 simulations; max DD p50 60.0R, p95 69.5R, max 82.0R
+HYPOTHESIS RESEARCH: TREND + MEAN_REVERSION IMPLEMENTED
 VALIDATION: NOT CONFIRMED
-REASON: Combined OOS remained negative; PF below 1; expectancy negative; robustness was not stable across folds; spread sensitivity generally worsened results.
-NEXT STEP: Keep live/real trading disabled. Preserve the tested version and continue research only if a new hypothesis is introduced and evaluated with strict train/OOS separation.
+NEXT STEP: Run the isolated hypothesis research on genuine Twelve Data candles with strict train/OOS separation; keep live/real disabled.
