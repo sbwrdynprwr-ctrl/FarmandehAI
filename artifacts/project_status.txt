@@ -1,11 +1,15 @@
 PROJECT COMPLETION: 95%
 PROJECT REMAINING: 5%
-VERSION: v0.2.2-hypothesis-research
+VERSION: v0.2.4-four-hypothesis-research
 LIVE TRADING: OFF
 REAL ORDER: OFF
 PAPER TRADING: ON
 SAFETY LOCKS: VERIFIED
-TESTS: 10 passed
-HYPOTHESIS RESEARCH: TREND + MEAN_REVERSION IMPLEMENTED
+TESTS: 10 passed before latest pullback change; latest pullback regression test still pending
+HYPOTHESIS RESEARCH: TREND + MEAN_REVERSION + BREAKOUT + PULLBACK EXECUTED
+60-DAY DATA: 17,275 GBP/USD 5-minute candles retrieved from Twelve Data
+PULLBACK OOS: 28 trades, 39.29% win rate, +1.50R, expectancy +0.0536R, PF 1.0882, max DD 6R, max loss streak 5
+PULLBACK ROBUSTNESS: neighbor-positive rates by fold 0%, 66.7%, 91.7%, 0%
+PULLBACK MONTE CARLO: p50 max DD 6R, p95 9.5R, max 12.5R, terminal +1.5R
 VALIDATION: NOT CONFIRMED
-NEXT STEP: Run the isolated hypothesis research on genuine Twelve Data candles with strict train/OOS separation; keep live/real disabled.
+NEXT STEP: Run the latest test suite and continue independent validation; do not activate live/real trading.
