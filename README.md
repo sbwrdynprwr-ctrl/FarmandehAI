@@ -34,4 +34,4 @@ python main.py
 Validation remains `NOT CONFIRMED` until genuine data and the required tests are completed.
 
 ## Research runtime
-The Railway research command bootstraps the current strategy module before execution so StrategyParams stays synchronized with the research hypotheses.
+The research runtime uses the strategy module committed in the repository. It does not download or overwrite source code at startup, so test execution remains isolated from network availability.
