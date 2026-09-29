@@ -40,77 +40,74 @@ def main():
     if args.run_tests:
         raise SystemExit(subprocess.call([sys.executable, "-m", "pytest", "-q"]))
 
-    http_server = None
     if args.serve:
         port = int(os.environ.get("PORT", "8080"))
         handler = partial(SimpleHTTPRequestHandler, directory="artifacts")
-        http_server = ThreadingHTTPServer(("0.0.0.0", port), handler)
-        threading.Thread(target=http_server.serve_forever, daemon=True).start()
+        threading.Thread(
+            target=ThreadingHTTPServer(("0.0.0.0", port), handler).serve_forever,
+            daemon=True,
+        ).start()
         print(f"RESEARCH_HTTP_PORT={port}", flush=True)
 
     df = load_csv(args.csv) if args.csv else fetch_twelvedata(DataConfig(), days=args.days)
     print(f"DATA_ROWS={len(df)}", flush=True)
-    baseline = StrategyParams()
+
+    baseline = StrategyParams(hypothesis="trend")
     baseline_trades = run_backtest(df, baseline)
     bm = metrics([t.r for t in baseline_trades])
-
     wf, wfm = walk_forward(df, baseline, args.folds)
     print(f"BASELINE_WF={json.dumps(wfm)}", flush=True)
+
     research = None
     if args.research:
-        research_folds, research_combined = walk_forward_search(df, args.folds)
-        for f in research_folds:
-            print(f"RESEARCH_FOLD={json.dumps({k: v for k, v in f.items() if k != 'trades'}, default=str)}", flush=True)
-        research_robustness = robustness(df, research_folds)
-        print(f"ROBUSTNESS={json.dumps(research_robustness, default=str)}", flush=True)
-        research_mc = monte_carlo(
-            [t.r for f in research_folds for t in f["trades"]],
-            simulations=1000,
-            seed=42,
-        )
-        print(f"MONTE_CARLO={json.dumps(research_mc)}", flush=True)
-        print(f"RESEARCH_COMBINED={json.dumps(research_combined)}", flush=True)
+        print("HYPOTHESIS_COMPARISON_START", flush=True)
+        trend_folds, trend_combined = walk_forward_search(df, args.folds, hypothesis="trend")
+        trend_robustness = robustness(df, trend_folds)
+        trend_mc = monte_carlo([t.r for f in trend_folds for t in f["trades"]], 1000, 42)
+
+        mean_folds, mean_combined = walk_forward_search(df, args.folds, hypothesis="mean_reversion")
+        mean_robustness = robustness(df, mean_folds)
+        mean_mc = monte_carlo([t.r for f in mean_folds for t in f["trades"]], 1000, 42)
+
+        print(f"TREND_RESEARCH_COMBINED={json.dumps(trend_combined)}", flush=True)
+        print(f"MEAN_REVERSION_RESEARCH_COMBINED={json.dumps(mean_combined)}", flush=True)
+        print(f"MEAN_REVERSION_ROBUSTNESS={json.dumps(mean_robustness, default=str)}", flush=True)
+        print(f"MEAN_REVERSION_MONTE_CARLO={json.dumps(mean_mc)}", flush=True)
+        for label, folds in (("trend", trend_folds), ("mean_reversion", mean_folds)):
+            for f in folds:
+                print(f"RESEARCH_FOLD={label}:{json.dumps({k: v for k, v in f.items() if k != 'trades'}, default=str)}", flush=True)
+
         research = {
-            "folds": research_folds,
-            "combined": research_combined,
-            "robustness": research_robustness,
-            "monte_carlo": research_mc,
+            "trend": {"folds": trend_folds, "combined": trend_combined,
+                      "robustness": trend_robustness, "monte_carlo": trend_mc},
+            "mean_reversion": {"folds": mean_folds, "combined": mean_combined,
+                               "robustness": mean_robustness, "monte_carlo": mean_mc},
         }
 
     status = (
-        "PROJECT COMPLETION: 90%\n"
-        "PROJECT REMAINING: 10%\n"
-        "VERSION: v0.2.0-research\n"
+        "PROJECT COMPLETION: 92%\n"
+        "PROJECT REMAINING: 8%\n"
+        "VERSION: v0.2.2-hypothesis-research\n"
         "LIVE TRADING: OFF\n"
         "REAL ORDER: OFF\n"
         "PAPER TRADING: ON\n"
+        "HYPOTHESES: TREND + ISOLATED MEAN_REVERSION\n"
         "TRAIN_ONLY_PARAMETER_SEARCH: EXECUTED\n"
         "OOS_EVALUATION: EXECUTED\n"
         "ROBUSTNESS: EXECUTED\n"
         "MONTE_CARLO: EXECUTED\n"
         "VALIDATION: NOT CONFIRMED\n"
-        "NEXT STEP: Review genuine OOS stability and robustness evidence; no live/real activation."
+        "NEXT STEP: Compare genuine OOS evidence without activating live/real trading."
     )
     write_reports(
-        "artifacts",
-        bm,
+        "artifacts", bm,
         [{"fold": r["fold"], "metrics": r["metrics"], "train_metrics": r["train_metrics"]} for r in wf],
-        baseline_trades,
-        status,
-        research=research,
+        baseline_trades, status, research=research,
     )
     print("FARMANDEHAI_RESEARCH_DONE", flush=True)
     if args.serve:
         print("RESEARCH_HTTP_READY", flush=True)
         threading.Event().wait()
-
-    print(json.dumps({
-        "baseline_backtest": bm,
-        "baseline_walk_forward": wfm,
-        "research_combined": research["combined"] if research else None,
-        "monte_carlo": research["monte_carlo"] if research else None,
-        "validation": "NOT CONFIRMED",
-    }, indent=2))
 
 
 if __name__ == "__main__":
