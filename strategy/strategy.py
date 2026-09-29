@@ -65,6 +65,15 @@ def signal_at(x: pd.DataFrame, i: int, p: StrategyParams):
         if r.close < r.donchian_lower and r.close < r.open:
             return "SHORT"
         return None
+    if p.hypothesis == "pullback":
+        needed = ["ema_fast", "ema_slow", "rsi", "atr", "body_ratio", "macd", "macd_signal"]
+        if not np.isfinite(r[needed].to_numpy(dtype=float)).all() or r.body_ratio < p.body_min:
+            return None
+        if r.ema_fast > r.ema_slow and 40 <= r.rsi <= 50 and r.macd >= r.macd_signal and r.close > r.open:
+            return "LONG"
+        if r.ema_fast < r.ema_slow and 50 <= r.rsi <= 60 and r.macd <= r.macd_signal and r.close < r.open:
+            return "SHORT"
+        return None
     needed = ["ema_fast","ema_slow","rsi","atr","macd","macd_signal","body_ratio"]
     if not np.isfinite(r[needed].to_numpy(dtype=float)).all() or r.body_ratio < p.body_min:
         return None
