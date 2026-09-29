@@ -1,15 +1,18 @@
-PROJECT COMPLETION: 95%
-PROJECT REMAINING: 5%
-VERSION: v0.2.4-four-hypothesis-research
+PROJECT COMPLETION: 96%
+PROJECT REMAINING: 4%
+VERSION: v0.2.5-hypothesis-warmup-fix
 LIVE TRADING: OFF
 REAL ORDER: OFF
 PAPER TRADING: ON
 SAFETY LOCKS: VERIFIED
-TESTS: 10 passed before latest pullback change; latest pullback regression test still pending
+STRATEGY FIX: Hypothesis-specific warm-up requirements; Breakout no longer incorrectly waits for EMA slow period
+LATEST STRATEGY COMMIT: 2e93b032747cee393e10f3365831ce71ae11c628
+TESTS: 10 passed before latest pullback change; latest full suite still pending independent execution
 HYPOTHESIS RESEARCH: TREND + MEAN_REVERSION + BREAKOUT + PULLBACK EXECUTED
 60-DAY DATA: 17,275 GBP/USD 5-minute candles retrieved from Twelve Data
-PULLBACK OOS: 28 trades, 39.29% win rate, +1.50R, expectancy +0.0536R, PF 1.0882, max DD 6R, max loss streak 5
-PULLBACK ROBUSTNESS: neighbor-positive rates by fold 0%, 66.7%, 91.7%, 0%
-PULLBACK MONTE CARLO: p50 max DD 6R, p95 9.5R, max 12.5R, terminal +1.5R
+LATEST PULLBACK OOS RUN: 33 trades, 36.36% win rate, -1.00R, expectancy -0.0303R, PF 0.9524, max DD 6.5R, max loss streak 6
+PULLBACK ROBUSTNESS: neighbor-positive rates by fold 0%, 66.7%, 83.3%, 0%
+PULLBACK MONTE CARLO: p50 max DD 7.5R, p95 11R, max 17.5R, terminal -1R
 VALIDATION: NOT CONFIRMED
-NEXT STEP: Run the latest test suite and continue independent validation; do not activate live/real trading.
+RAILWAY: Latest deployment 24b572cf-5bfa-4cba-842d-76a2873ec740 remains DEPLOYING; build phase completed, runtime completion not yet verified
+NEXT STEP: Verify latest deployment runtime and execute the complete test suite; continue independent validation. Never activate live/real trading without confirmed validation.
