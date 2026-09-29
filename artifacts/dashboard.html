@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>FarmandehAI Dashboard</title>
+<style>
+*{box-sizing:border-box}body{margin:0;background:#071019;color:#eef7f3;font-family:Tahoma,Arial,sans-serif}
+.wrap{max-width:1180px;margin:auto;padding:24px}.hero{display:flex;justify-content:space-between;gap:20px;align-items:center;padding:24px;border:1px solid #183d3b;border-radius:24px;background:linear-gradient(135deg,#0b1d25,#071019)}
+.logo{font-size:32px;font-weight:800}.logo b{color:#18e58a}.sub{color:#9bb8b1;margin-top:8px}.badge{padding:10px 14px;border-radius:999px;background:#103a2d;color:#49f2a0;font-weight:700}
+.grid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin:18px 0}.card{background:#0b1720;border:1px solid #18313b;border-radius:18px;padding:18px}.k{color:#8ca7a8;font-size:13px}.v{font-size:25px;font-weight:800;margin-top:8px}.bad{color:#ff8d8d}.good{color:#55e6a0}.neutral{color:#ffd27a}
+h2{margin-top:28px}.strategies{display:grid;grid-template-columns:repeat(4,1fr);gap:14px}.strategy{min-height:145px;border-radius:18px;padding:18px;background:#0b1720;border:1px solid #243842}.strategy h3{margin:0 0 10px}.strategy p{color:#9fb4b3;line-height:1.8;font-size:14px}.pill{display:inline-block;padding:5px 9px;border-radius:8px;background:#19252d;color:#b8ccca;font-size:12px}
+.safety{margin-top:20px;padding:18px;border-radius:18px;background:#101b20;border:1px solid #2a5147}.row{display:flex;justify-content:space-between;padding:9px 0;border-bottom:1px solid #1c3035}.row:last-child{border:0}
+@media(max-width:800px){.grid,.strategies{grid-template-columns:repeat(2,1fr)}.hero{flex-direction:column;align-items:flex-start}}@media(max-width:500px){.wrap{padding:14px}.grid,.strategies{grid-template-columns:1fr}}
+</style>
+</head>
+<body><main class="wrap">
+<section class="hero"><div><div class="logo">Farmandeh<span>AI</span></div><div class="sub">ربات تحلیل و معامله‌گری هوشمند — نسخه Paper Trading</div></div><div class="badge">● LIVE / REAL خاموش</div></section>
+<div class="grid">
+<div class="card"><div class="k">بازار</div><div class="v">GBP/USD</div><div class="k">تایم‌فریم 5 دقیقه</div></div>
+<div class="card"><div class="k">داده آزمایش</div><div class="v">17,275</div><div class="k">کندل</div></div>
+<div class="card"><div class="k">Validation</div><div class="v neutral">NOT CONFIRMED</div><div class="k">تا تأیید OOS</div></div>
+<div class="card"><div class="k">ریسک هر معامله</div><div class="v">1%</div><div class="k">Risk Manager</div></div>
+</div>
+<h2>۴ موتور استراتژی</h2><section class="strategies">
+<article class="strategy"><h3>Trend</h3><span class="pill">EMA + RSI + MACD</span><p>شناسایی جهت روند و ورود پس از تأیید شرایط بازار.</p></article>
+<article class="strategy"><h3>Mean Reversion</h3><span class="pill">RSI + Bollinger</span><p>جست‌وجوی بازگشت قیمت به میانگین؛ فعلاً تعداد معاملات برای اعتبارسنجی کافی نیست.</p></article>
+<article class="strategy"><h3>Breakout</h3><span class="pill">Donchian</span><p>شناسایی شکست محدوده قبلی با کنترل ATR و نسبت ریسک به بازده.</p></article>
+<article class="strategy"><h3>Pullback</h3><span class="pill">EMA + RSI + MACD</span><p>ورود روی اصلاح کوتاه‌مدت در جهت روند اصلی؛ در حال ارزیابی مستقل OOS.</p></article>
+</section>
+<h2>قابلیت‌های ربات</h2><section class="grid">
+<div class="card"><div class="v">تحلیل خودکار</div><div class="k">داده، اندیکاتورها و سیگنال</div></div>
+<div class="card"><div class="v">مدیریت ریسک</div><div class="k">SL / TP / Position Size</div></div>
+<div class="card"><div class="v">Walk-Forward</div><div class="k">Train / Tune / OOS</div></div>
+<div class="card"><div class="v">Monte Carlo</div><div class="k">بررسی توالی معاملات و DD</div></div>
+</section>
+<section class="safety"><h2 style="margin-top:0">قفل‌های ایمنی</h2>
+<div class="row"><span>Paper Trading</span><strong class="good">ON</strong></div>
+<div class="row"><span>Live Trading</span><strong class="bad">OFF</strong></div>
+<div class="row"><span>Real Orders</span><strong class="bad">OFF</strong></div>
+<div class="row"><span>No Lookahead / Closed Candle</span><strong class="good">VERIFIED</strong></div>
+</section>
+</main></body></html>
