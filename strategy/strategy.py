@@ -44,7 +44,13 @@ def indicators(df: pd.DataFrame, p: StrategyParams) -> pd.DataFrame:
     return x
 
 def signal_at(x: pd.DataFrame, i: int, p: StrategyParams):
-    if i < max(p.ema_slow, p.rsi_period, p.atr_period, p.donchian_period, 30):
+    if p.hypothesis == "breakout":
+        min_history = max(p.atr_period, p.donchian_period, 30)
+    elif p.hypothesis == "mean_reversion":
+        min_history = max(p.rsi_period, p.atr_period, 30)
+    else:
+        min_history = max(p.ema_slow, p.rsi_period, p.atr_period, 30)
+    if i < min_history:
         return None
     r = x.iloc[i]
     if p.hypothesis == "mean_reversion":
