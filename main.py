@@ -9,6 +9,20 @@ import threading
 from functools import partial
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 
+# Railway currently deploys an older pinned snapshot. Bootstrap the strategy module
+# from the current repository before importing modules that depend on StrategyParams.
+def _bootstrap_strategy():
+    path = os.path.join("strategy", "strategy.py")
+    os.makedirs("strategy", exist_ok=True)
+    import requests
+    url = "https://raw.githubusercontent.com/sbwrdynprwr-ctrl/FarmandehAI/main/strategy/strategy.py"
+    r = requests.get(url, timeout=30)
+    r.raise_for_status()
+    with open(path, "wb") as f:
+        f.write(r.content)
+
+_bootstrap_strategy()
+
 from data.loader import DataConfig, fetch_twelvedata, load_csv
 from strategy.strategy import StrategyParams
 from backtest.engine import run_backtest
