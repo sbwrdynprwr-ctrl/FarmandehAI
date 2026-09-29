@@ -3,19 +3,24 @@ import json
 from pathlib import Path
 
 
+def _clean_research(research):
+    return {
+        name: {
+            "folds": [{k: v for k, v in f.items() if k != "trades"} for f in data.get("folds", [])],
+            "combined": data.get("combined"),
+            "robustness": data.get("robustness"),
+            "monte_carlo": data.get("monte_carlo"),
+        }
+        for name, data in research.items()
+    }
+
+
 def write_reports(outdir, backtest_metrics, wf_results, trades, status, research=None):
     out = Path(outdir)
     out.mkdir(parents=True, exist_ok=True)
     payload = {"backtest": backtest_metrics, "walk_forward": wf_results}
     if research is not None:
-        def clean_fold(f):
-            return {k: v for k, v in f.items() if k != "trades"}
-        payload["research"] = {
-            "folds": [clean_fold(f) for f in research["folds"]],
-            "combined": research["combined"],
-            "robustness": research["robustness"],
-            "monte_carlo": research["monte_carlo"],
-        }
+        payload["research"] = _clean_research(research)
     (out / "metrics.json").write_text(json.dumps(payload, indent=2, default=str), encoding="utf-8")
 
     lines = ["WALK-FORWARD REPORT", ""]
@@ -32,12 +37,7 @@ def write_reports(outdir, backtest_metrics, wf_results, trades, status, research
 
     if research is not None:
         (out / "research_report.json").write_text(
-            json.dumps({
-                "folds": [{k: v for k, v in f.items() if k != "trades"} for f in research["folds"]],
-                "combined": research["combined"],
-                "robustness": research["robustness"],
-                "monte_carlo": research["monte_carlo"],
-            }, indent=2, default=str),
+            json.dumps(_clean_research(research), indent=2, default=str),
             encoding="utf-8",
         )
 
