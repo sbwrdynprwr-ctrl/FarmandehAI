@@ -1,7 +1,7 @@
 import pandas as pd
 
 from backtest.metrics import metrics
-from backtest.research import parameter_candidates, select_params, monte_carlo
+from backtest.research import parameter_candidates, breakout_candidates, select_params, monte_carlo
 
 
 def sample_df(n=240):
@@ -21,6 +21,12 @@ def test_parameter_candidates_are_valid_and_include_baseline():
     assert len(ps) > 0
     assert any(p.ema_fast == 20 and p.ema_slow == 50 and p.rsi_period == 14 and p.atr_multiplier == 1.5 and p.rr == 2.0 and p.body_min == 0.55 for p in ps)
     assert all(p.ema_fast < p.ema_slow for p in ps)
+
+
+def test_breakout_candidates_are_valid():
+    ps = list(breakout_candidates())
+    assert len(ps) == 32
+    assert all(p.hypothesis == "breakout" and p.donchian_period in (15,20,30,40) for p in ps)
 
 
 def test_monte_carlo_is_reproducible():

@@ -75,43 +75,37 @@ def main():
     research = None
     if args.research:
         print("HYPOTHESIS_COMPARISON_START", flush=True)
-        trend_folds, trend_combined = walk_forward_search(df, args.folds, hypothesis="trend")
-        trend_robustness = robustness(df, trend_folds)
-        trend_mc = monte_carlo([t.r for f in trend_folds for t in f["trades"]], 1000, 42)
-
-        mean_folds, mean_combined = walk_forward_search(df, args.folds, hypothesis="mean_reversion")
-        mean_robustness = robustness(df, mean_folds)
-        mean_mc = monte_carlo([t.r for f in mean_folds for t in f["trades"]], 1000, 42)
-
-        print(f"TREND_RESEARCH_COMBINED={json.dumps(trend_combined)}", flush=True)
-        print(f"MEAN_REVERSION_RESEARCH_COMBINED={json.dumps(mean_combined)}", flush=True)
-        print(f"MEAN_REVERSION_ROBUSTNESS={json.dumps(mean_robustness, default=str)}", flush=True)
-        print(f"MEAN_REVERSION_MONTE_CARLO={json.dumps(mean_mc)}", flush=True)
-        for label, folds in (("trend", trend_folds), ("mean_reversion", mean_folds)):
+        results = {}
+        for hypothesis in ("trend", "mean_reversion", "breakout"):
+            folds, combined = walk_forward_search(df, args.folds, hypothesis=hypothesis)
+            rb = robustness(df, folds)
+            mc = monte_carlo([t.r for f in folds for t in f["trades"]], 1000, 42)
+            results[hypothesis] = {
+                "folds": folds, "combined": combined,
+                "robustness": rb, "monte_carlo": mc,
+            }
+            print(f"{hypothesis.upper()}_RESEARCH_COMBINED={json.dumps(combined)}", flush=True)
+            print(f"{hypothesis.upper()}_ROBUSTNESS={json.dumps(rb, default=str)}", flush=True)
+            print(f"{hypothesis.upper()}_MONTE_CARLO={json.dumps(mc)}", flush=True)
             for f in folds:
-                print(f"RESEARCH_FOLD={label}:{json.dumps({k: v for k, v in f.items() if k != 'trades'}, default=str)}", flush=True)
-
-        research = {
-            "trend": {"folds": trend_folds, "combined": trend_combined,
-                      "robustness": trend_robustness, "monte_carlo": trend_mc},
-            "mean_reversion": {"folds": mean_folds, "combined": mean_combined,
-                               "robustness": mean_robustness, "monte_carlo": mean_mc},
-        }
+                print(f"RESEARCH_FOLD={hypothesis}:{json.dumps({k: v for k, v in f.items() if k != 'trades'}, default=str)}", flush=True)
+        research = results
 
     status = (
         "PROJECT COMPLETION: 92%\n"
         "PROJECT REMAINING: 8%\n"
-        "VERSION: v0.2.2-hypothesis-research\n"
+        "VERSION: v0.2.3-three-hypothesis-research\n"
         "LIVE TRADING: OFF\n"
         "REAL ORDER: OFF\n"
         "PAPER TRADING: ON\n"
-        "HYPOTHESES: TREND + ISOLATED MEAN_REVERSION\n"
+        "HYPOTHESES: TREND + MEAN_REVERSION + BREAKOUT\n"
         "TRAIN_ONLY_PARAMETER_SEARCH: EXECUTED\n"
         "OOS_EVALUATION: EXECUTED\n"
+        "TRANSACTION_COST_SENSITIVITY: EXECUTED\n"
         "ROBUSTNESS: EXECUTED\n"
         "MONTE_CARLO: EXECUTED\n"
         "VALIDATION: NOT CONFIRMED\n"
-        "NEXT STEP: Compare genuine OOS evidence without activating live/real trading."
+        "NEXT STEP: Review genuine OOS evidence; do not activate live/real trading."
     )
     write_reports(
         "artifacts", bm,
