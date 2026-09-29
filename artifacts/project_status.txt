@@ -1,19 +1,19 @@
-PROJECT COMPLETION: 96%
-PROJECT REMAINING: 4%
-VERSION: v0.2.7-ci-isolation
+PROJECT COMPLETION: 97%
+PROJECT REMAINING: 3%
+VERSION: v0.2.8-research-verified
 LIVE TRADING: OFF
 REAL ORDER: OFF
 PAPER TRADING: ON
 SAFETY LOCKS: VERIFIED
-STRATEGY FIX: Hypothesis-specific warm-up requirements
-TEST ISOLATION FIX: Repository test command is network-independent
-CI: Added GitHub Actions compile + pytest workflow
-TESTS: Independent latest full-suite result still pending; do not claim pass without execution evidence
-HYPOTHESIS RESEARCH: TREND + MEAN_REVERSION + BREAKOUT + PULLBACK EXECUTED
-60-DAY DATA: 17,275 GBP/USD 5-minute candles retrieved from Twelve Data
-PULLBACK OOS: 33 trades, 36.36% win rate, -1.00R, expectancy -0.0303R, PF 0.9524, max DD 6.5R, max loss streak 6
-PULLBACK ROBUSTNESS: neighbor-positive rates by fold 0%, 66.7%, 83.3%, 0%
-PULLBACK MONTE CARLO: p50 max DD 7.5R, p95 11R, max 17.5R, terminal -1R
+CI: GitHub Actions workflow added; latest independent CI result should be verified separately before claiming all tests pass
+RAILWAY DEPLOYMENT: SUCCESS
+RAILWAY DEPLOYMENT ID: 03ee28db-9e24-49ab-914a-d5d2aa36f146
+DATA: 17,275 GBP/USD 5-minute candles retrieved successfully
+RESEARCH: TREND + MEAN_REVERSION + BREAKOUT + PULLBACK completed end-to-end
+TREND OOS COMBINED: 337 trades, 32.64% win rate, -57R, expectancy -0.1691R, PF 0.7489, max DD 57R, max loss streak 17
+MEAN_REVERSION OOS COMBINED: 3 trades, 33.33% win rate, approximately 0R, too few trades for validation
+BREAKOUT OOS COMBINED: 291 trades, 32.65% win rate, -24R, expectancy -0.0825R, PF 0.8776, max DD 47.5R, max loss streak 14
+PULLBACK OOS COMBINED: 29 trades, 31.03% win rate, -5.5R, expectancy -0.1897R, PF 0.7250, max DD 7.5R, max loss streak 7
+PULLBACK MONTE CARLO: p50 max DD 9R, p95 12.525R, max 17R, terminal -5.5R
 VALIDATION: NOT CONFIRMED
-RAILWAY: Main service start command restored to 60-day four-hypothesis research; Railway currently has a stuck BUILDING deployment. A separate test service was created, but its initial deployment is still INITIALIZING.
-NEXT STEP: Obtain an independent CI/Railway test result, then rerun research only if data access succeeds. Never activate live/real trading without confirmed validation.
+NEXT STEP: Verify independent CI result, then improve/research strategy hypotheses and rerun OOS validation. Never activate live/real trading without confirmed validation.
