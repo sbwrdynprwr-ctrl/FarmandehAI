@@ -18,6 +18,27 @@ def _score(m):
     return (m["expectancy"], pf, -m["max_drawdown"], m["trades"])
 
 
+def _stability_score(tune: pd.DataFrame, p: StrategyParams):
+    """Score a candidate on multiple chronological slices of the training tune window."""
+    if len(tune) < 60:
+        m = metrics([t.r for t in run_backtest(tune, p)])
+        return _score(m), [m]
+    cuts = np.array_split(tune, 3)
+    slice_metrics = [metrics([t.r for t in run_backtest(part.reset_index(drop=True), p)])
+                     for part in cuts]
+    valid = [m for m in slice_metrics if m["trades"] > 0]
+    if not valid:
+        return (-999.0, -999.0, 999.0, 0), slice_metrics
+    mean_exp = float(np.mean([m["expectancy"] for m in valid]))
+    min_exp = float(min(m["expectancy"] for m in valid))
+    positive_slices = sum(m["total_r"] > 0 for m in valid)
+    pf_values = [m["profit_factor"] for m in valid if m["profit_factor"] is not None]
+    mean_pf = float(np.mean(pf_values)) if pf_values else -1.0
+    total_trades = sum(m["trades"] for m in valid)
+    # Prefer consistency across chronological slices over a single lucky segment.
+    return (mean_exp, min_exp, mean_pf, positive_slices, total_trades), slice_metrics
+
+
 def parameter_candidates():
     for ef, es, rp, am, rr, bm in itertools.product(
         (20, 25), (45, 50, 55), (14,), (1.25, 1.5), (1.5, 2.0), (0.55,),
@@ -70,8 +91,7 @@ def _candidates_for(hypothesis):
 
 
 def select_params(train: pd.DataFrame, min_trades: int = 10, hypothesis: str = "trend"):
-    # Parameter selection is confined to the training window. OOS is never used
-    # to choose parameters; the 75/25 split is an internal train/tune split.
+    # Selection remains entirely inside the training window. OOS is never used.
     split = max(1, int(len(train) * 0.75))
     fit = train.iloc[:split].reset_index(drop=True)
     tune = train.iloc[split:].reset_index(drop=True)
@@ -82,11 +102,13 @@ def select_params(train: pd.DataFrame, min_trades: int = 10, hypothesis: str = "
         tr = run_backtest(tune, p)
         m = metrics([t.r for t in tr])
         if m["trades"] >= min_trades:
-            ranked.append((p, m))
+            stability, slice_metrics = _stability_score(tune, p)
+            ranked.append((p, m, stability, slice_metrics))
     best = baseline
+    best_stability = None
     if ranked:
-        ranked.sort(key=lambda x: _score(x[1]), reverse=True)
-        best = ranked[0][0]
+        ranked.sort(key=lambda x: x[2], reverse=True)
+        best, _, best_stability, _ = ranked[0]
     fit_m = metrics([t.r for t in run_backtest(fit, best)])
     tune_m = metrics([t.r for t in run_backtest(tune, best)])
     return best, {
@@ -94,6 +116,7 @@ def select_params(train: pd.DataFrame, min_trades: int = 10, hypothesis: str = "
         "eligible_count": len(ranked),
         "fit_metrics": fit_m,
         "tune_metrics": tune_m,
+        "stability_score": best_stability,
         "selection_score": _score(tune_m),
     }
 
