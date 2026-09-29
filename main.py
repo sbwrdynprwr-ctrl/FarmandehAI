@@ -76,7 +76,7 @@ def main():
     if args.research:
         print("HYPOTHESIS_COMPARISON_START", flush=True)
         results = {}
-        for hypothesis in ("trend", "mean_reversion", "breakout"):
+        for hypothesis in ("trend", "mean_reversion", "breakout", "pullback"):
             folds, combined = walk_forward_search(df, args.folds, hypothesis=hypothesis)
             rb = robustness(df, folds)
             mc = monte_carlo([t.r for f in folds for t in f["trades"]], 1000, 42)
@@ -94,11 +94,11 @@ def main():
     status = (
         "PROJECT COMPLETION: 92%\n"
         "PROJECT REMAINING: 8%\n"
-        "VERSION: v0.2.3-three-hypothesis-research\n"
+        "VERSION: v0.2.4-four-hypothesis-research\n"
         "LIVE TRADING: OFF\n"
         "REAL ORDER: OFF\n"
         "PAPER TRADING: ON\n"
-        "HYPOTHESES: TREND + MEAN_REVERSION + BREAKOUT\n"
+        "HYPOTHESES: TREND + MEAN_REVERSION + BREAKOUT + PULLBACK\n"
         "TRAIN_ONLY_PARAMETER_SEARCH: EXECUTED\n"
         "OOS_EVALUATION: EXECUTED\n"
         "TRANSACTION_COST_SENSITIVITY: EXECUTED\n"
