@@ -19,3 +19,12 @@ def test_breakout_bands_are_shifted_and_signal_uses_prior_range():
     x=indicators(df,p)
     assert x.iloc[39].donchian_upper == x.iloc[19:39].high.max()
     assert signal_at(x,39,p) == "LONG"
+
+
+def test_pullback_hypothesis_is_supported():
+    ts=pd.date_range("2026-01-01", periods=80, freq="5min")
+    close=[1.0 + i*0.0001 for i in range(80)]
+    df=pd.DataFrame({"timestamp":ts,"open":close,"high":[v+0.0002 for v in close],"low":[v-0.0002 for v in close],"close":close})
+    p=StrategyParams(hypothesis="pullback")
+    x=indicators(df,p)
+    assert "ema_fast" in x.columns and "macd_signal" in x.columns
