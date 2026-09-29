@@ -1,4 +1,5 @@
 import pandas as pd
+import pytest
 import backtest.engine as engine
 from backtest.engine import run_backtest
 from strategy.strategy import StrategyParams
