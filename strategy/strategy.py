@@ -12,6 +12,7 @@ class StrategyParams:
     atr_multiplier: float = 1.5
     rr: float = 2.0
     body_min: float = 0.55
+    hypothesis: str = "trend"
 
 def indicators(df: pd.DataFrame, p: StrategyParams) -> pd.DataFrame:
     x = df.copy()
@@ -31,15 +32,28 @@ def indicators(df: pd.DataFrame, p: StrategyParams) -> pd.DataFrame:
     macd_slow = close.ewm(span=26, adjust=False).mean()
     x["macd"] = macd_fast - macd_slow
     x["macd_signal"] = x["macd"].ewm(span=9, adjust=False).mean()
+    bb_mid = close.rolling(p.rsi_period).mean()
+    bb_std = close.rolling(p.rsi_period).std(ddof=0)
+    x["bb_mid"] = bb_mid
+    x["bb_upper"] = bb_mid + 2.0 * bb_std
+    x["bb_lower"] = bb_mid - 2.0 * bb_std
     return x
 
 def signal_at(x: pd.DataFrame, i: int, p: StrategyParams):
     if i < max(p.ema_slow, p.rsi_period, p.atr_period, 30):
         return None
     r = x.iloc[i]
-    if not np.isfinite(r[["ema_fast","ema_slow","rsi","atr","macd","macd_signal","body_ratio"]].to_numpy(dtype=float)).all():
+    if p.hypothesis == "mean_reversion":
+        needed = ["rsi", "atr", "body_ratio", "bb_upper", "bb_lower"]
+        if not np.isfinite(r[needed].to_numpy(dtype=float)).all() or r.body_ratio < p.body_min:
+            return None
+        if r.close <= r.bb_lower and r.rsi <= 35 and r.close > r.open:
+            return "LONG"
+        if r.close >= r.bb_upper and r.rsi >= 65 and r.close < r.open:
+            return "SHORT"
         return None
-    if r.body_ratio < p.body_min:
+    needed = ["ema_fast","ema_slow","rsi","atr","macd","macd_signal","body_ratio"]
+    if not np.isfinite(r[needed].to_numpy(dtype=float)).all() or r.body_ratio < p.body_min:
         return None
     if r.ema_fast > r.ema_slow and r.rsi >= 50 and r.macd > r.macd_signal and r.close > r.open:
         return "LONG"
