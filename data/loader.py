@@ -39,9 +39,21 @@ def _request(config: DataConfig, key: str, start: datetime | None = None, end: d
         params["start_date"]=start.strftime("%Y-%m-%dT%H:%M:%SZ"); params["end_date"]=end.strftime("%Y-%m-%dT%H:%M:%SZ"); params.pop("outputsize",None)
     try:
         response=requests.get("https://api.twelvedata.com/time_series",params=params,headers={"Authorization":f"apikey {key}"},timeout=config.timeout_seconds)
-        response.raise_for_status(); payload=response.json()
+        response.raise_for_status()
+        payload=response.json()
     except RequestException as exc:
-        raise RuntimeError(f"TwelveData request failed: {exc.__class__.__name__}") from None
+        status=getattr(getattr(exc, "response", None), "status_code", None)
+        detail=""
+        resp=getattr(exc, "response", None)
+        if resp is not None:
+            try:
+                body=resp.json()
+                detail=str(body.get("message") or body.get("code") or "")
+            except ValueError:
+                detail=""
+        suffix=f"; status={status}" if status is not None else ""
+        if detail: suffix += f"; message={detail}"
+        raise RuntimeError(f"TwelveData request failed: {exc.__class__.__name__}{suffix}") from None
     except ValueError: raise RuntimeError("TwelveData returned a non-JSON response") from None
     if payload.get("status")=="error" or "values" not in payload: raise RuntimeError(f"TwelveData error: {payload.get('message','invalid response')}")
     rows=[{"timestamp":r["datetime"],"open":r["open"],"high":r["high"],"low":r["low"],"close":r["close"],"volume":r.get("volume")} for r in payload["values"]]
