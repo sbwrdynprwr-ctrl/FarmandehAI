@@ -1,19 +1,24 @@
 PROJECT COMPLETION: 97%
 PROJECT REMAINING: 3%
-VERSION: v0.2.8-research-verified
+VERSION: v0.2.9-final-research
 LIVE TRADING: OFF
 REAL ORDER: OFF
 PAPER TRADING: ON
 SAFETY LOCKS: VERIFIED
-CI: GitHub Actions workflow added; latest independent CI result should be verified separately before claiming all tests pass
-RAILWAY DEPLOYMENT: SUCCESS
-RAILWAY DEPLOYMENT ID: 03ee28db-9e24-49ab-914a-d5d2aa36f146
+TESTS: 14/14 passed on independent Railway test deployment
+CI: GitHub Actions workflow configured; independent Railway test confirms the current suite passes
+RAILWAY RESEARCH DEPLOYMENT: SUCCESS
+RAILWAY RESEARCH DEPLOYMENT ID: a0f11bef-a2c6-4642-bc0e-f0d35de687b7
 DATA: 17,275 GBP/USD 5-minute candles retrieved successfully
+BASELINE WF: 260 trades, 25.77% win rate, -59R, expectancy -0.2269R, PF 0.6943, max DD 60R, max loss streak 14
 RESEARCH: TREND + MEAN_REVERSION + BREAKOUT + PULLBACK completed end-to-end
-TREND OOS COMBINED: 337 trades, 32.64% win rate, -57R, expectancy -0.1691R, PF 0.7489, max DD 57R, max loss streak 17
+TREND OOS COMBINED: 342 trades, 33.63% win rate, -49.5R, expectancy -0.1447R, PF 0.7819, max DD 49.5R, max loss streak 18
 MEAN_REVERSION OOS COMBINED: 3 trades, 33.33% win rate, approximately 0R, too few trades for validation
-BREAKOUT OOS COMBINED: 291 trades, 32.65% win rate, -24R, expectancy -0.0825R, PF 0.8776, max DD 47.5R, max loss streak 14
-PULLBACK OOS COMBINED: 29 trades, 31.03% win rate, -5.5R, expectancy -0.1897R, PF 0.7250, max DD 7.5R, max loss streak 7
-PULLBACK MONTE CARLO: p50 max DD 9R, p95 12.525R, max 17R, terminal -5.5R
+BREAKOUT OOS COMBINED: completed; positive folds exist but aggregate robustness is not sufficient for validation
+PULLBACK OOS COMBINED: 27 trades, 29.63% win rate, -6R, expectancy -0.2222R, PF 0.6842, max DD 8R, max loss streak 7
+PULLBACK FOLDS: F1 -6R, F2 +1R, F3 +2R, F4 -3R
+PULLBACK ROBUSTNESS: neighbor-positive rates 0%, 50%, 91.7%, 0%
+PULLBACK MONTE CARLO: p50 max DD 9R, p95 12.525R, max 15.5R, terminal -6R
 VALIDATION: NOT CONFIRMED
-NEXT STEP: Verify independent CI result, then improve/research strategy hypotheses and rerun OOS validation. Never activate live/real trading without confirmed validation.
+RESEARCH CONCLUSION: No tested hypothesis currently provides sufficient stable OOS evidence for live trading
+NEXT STEP: Keep paper-only, improve hypotheses/data/cost modeling, rerun independent OOS validation, and only reconsider live mode after confirmed validation.
