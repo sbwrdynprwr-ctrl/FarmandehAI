@@ -122,7 +122,7 @@ def select_params(
     best = baseline
     best_stability = None
     if ranked:
-        ranked.sort(key=lambda x: x[2], reverse=True)
+        ranked.sort(key=lambda x: (x[2][3], x[2][1], x[2][0], x[2][2], -x[1]["max_drawdown"], x[2][4]), reverse=True)
         best, _, best_stability, _ = ranked[0]
     fit_m = metrics([t.r for t in run_backtest(fit, best, spread=selection_spread)])
     tune_m = metrics([t.r for t in run_backtest(tune, best, spread=selection_spread)])
