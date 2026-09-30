@@ -1,6 +1,6 @@
 PROJECT COMPLETION: 97%
 PROJECT REMAINING: 3%
-VERSION: v0.2.10-cost-aware-research
+VERSION: v0.2.11-nested-fit-selection
 LIVE TRADING: OFF
 REAL ORDER: OFF
 PAPER TRADING: ON
@@ -8,18 +8,19 @@ SAFETY LOCKS: VERIFIED
 TESTS: 14/14 passed on independent Railway test deployment
 CI: GitHub Actions workflow configured; independent Railway test confirms the current suite passes
 RAILWAY RESEARCH DEPLOYMENT: SUCCESS
-RAILWAY RESEARCH DEPLOYMENT ID: a06793a2-720b-45e8-a584-9a83b256661a
-DATA: 17,274 GBP/USD 5-minute candles retrieved successfully
-RESEARCH CHANGE: Parameter selection now includes conservative 0.5-pip spread stress and requires evidence across chronological tune slices; OOS remains untouched during selection
-BASELINE WF: 257 trades, 26.07% win rate, -56R, expectancy -0.2179R, PF 0.7053, max DD 61R, max loss streak 14
-TREND OOS COMBINED: 338 trades, 33.73% win rate, -48R, expectancy -0.1420R, PF 0.7857, max DD 50.5R, max loss streak 18
+RAILWAY RESEARCH DEPLOYMENT ID: ba9af15b-34df-4695-9bc5-3b7e9e4286fc
+DATA: 17,275 GBP/USD 5-minute candles retrieved successfully
+RESEARCH CHANGE: Parameter eligibility and ranking now use FIT-only chronological slices with conservative 0.5-pip selection spread; the training TUNE slice is held out from parameter selection and OOS remains untouched.
+BASELINE WF: 255 trades, 26.67% win rate, -51R, expectancy -0.2000R, PF 0.7273, max DD 56R, max loss streak 14
+TREND OOS COMBINED: 338 trades, 34.02% win rate, -45.5R, expectancy -0.1346R, PF 0.7960, max DD 48R, max loss streak 18
 MEAN_REVERSION OOS COMBINED: 3 trades, 33.33% win rate, approximately 0R; too few trades for validation
-BREAKOUT OOS COMBINED: 295 trades, 35.93% win rate, -10R, expectancy -0.0339R, PF 0.9471, max DD 32.5R, max loss streak 12
-BREAKOUT ROBUSTNESS: neighbor-positive rates 0%, 78.6%, 100%, 7.1%; spread stress turns some positive folds weaker
+BREAKOUT OOS COMBINED: 294 trades, 36.05% win rate, -9R, expectancy -0.0306R, PF 0.9521, max DD 32.5R, max loss streak 12
+BREAKOUT FOLDS: F1 -18R, F2 +2R, F3 +11R, F4 -4R
+BREAKOUT ROBUSTNESS: neighbor-positive rates 0%, 78.6%, 100%, 7.1%; spread stress materially weakens some folds
 PULLBACK OOS COMBINED: 28 trades, 35.71% win rate, -1.5R, expectancy -0.0536R, PF 0.9167, max DD 6R, max loss streak 6
 PULLBACK FOLDS: F1 -3R, F2 +2R, F3 +2.5R, F4 -3R
 PULLBACK ROBUSTNESS: neighbor-positive rates 0%, 58.3%, 91.7%, 0%
 PULLBACK MONTE CARLO: p50 max DD 7R, p95 11R, max 15.5R, terminal -1.5R
 VALIDATION: NOT CONFIRMED
-RESEARCH CONCLUSION: Cost-aware selection improved the aggregate breakout and pullback results versus the prior run, but no hypothesis yet has sufficiently stable positive OOS evidence.
-NEXT STEP: Add baseline-as-a-selection-candidate to prevent parameter search from replacing a stronger baseline, rerun independent OOS, then reassess validation. Never activate live/real trading without confirmed validation.
+RESEARCH CONCLUSION: Removing parameter-selection leakage produced a clean independent OOS run; breakout improved toward breakeven but remains negative overall and unstable across folds, while pullback remains slightly negative and low-sample.
+NEXT STEP: Add the baseline itself as an explicit selection candidate, then rerun independent OOS and cost/robustness checks. Never activate live/real trading without confirmed validation.
