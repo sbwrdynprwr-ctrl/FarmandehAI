@@ -40,7 +40,11 @@ def run_backtest(df: pd.DataFrame, params=StrategyParams(), initial_equity=10000
                 exit_price=tp; reason="TAKE_PROFIT"; break
             j += 1
         if exit_price is None: break
-        r = (exit_price-entry)/risk if side=="LONG" else (entry-exit_price)/risk
+        # Model the exit half of the quoted spread as a transaction cost too.
+        # The stop/TP hit is evaluated on candle prices, then execution pays the
+        # opposite half-spread at exit. This makes spread sensitivity round-trip.
+        executed_exit = exit_price - spread/2 if side == "LONG" else exit_price + spread/2
+        r = (executed_exit-entry)/risk if side=="LONG" else (entry-executed_exit)/risk
         trades.append(Trade(x.iloc[i].timestamp, side, entry, sl, tp, exit_price, "WIN" if r>0 else "LOSS", float(r), reason))
         i=j+1
     return trades
