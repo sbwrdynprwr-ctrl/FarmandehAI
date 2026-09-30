@@ -13,29 +13,34 @@ from backtest.metrics import metrics
 from strategy.strategy import StrategyParams
 
 
+SELECTION_SPREAD = 0.00005
+
+
 def _score(m):
     pf = -1.0 if m["profit_factor"] is None else m["profit_factor"]
     return (m["expectancy"], pf, -m["max_drawdown"], m["trades"])
 
 
-def _stability_score(tune: pd.DataFrame, p: StrategyParams):
-    """Score a candidate on multiple chronological slices of the training tune window."""
+def _stability_score(tune: pd.DataFrame, p: StrategyParams, spread: float = SELECTION_SPREAD):
+    """Score a candidate on chronological slices with conservative spread costs."""
     if len(tune) < 60:
-        m = metrics([t.r for t in run_backtest(tune, p)])
+        m = metrics([t.r for t in run_backtest(tune, p, spread=spread)])
         return _score(m), [m]
     cuts = np.array_split(tune, 3)
-    slice_metrics = [metrics([t.r for t in run_backtest(part.reset_index(drop=True), p)])
-                     for part in cuts]
-    valid = [m for m in slice_metrics if m["trades"] > 0]
-    if not valid:
-        return (-999.0, -999.0, 999.0, 0), slice_metrics
+    slice_metrics = [
+        metrics([t.r for t in run_backtest(part.reset_index(drop=True), p, spread=spread)])
+        for part in cuts
+    ]
+    # Require enough activity before treating a slice as evidence.
+    valid = [m for m in slice_metrics if m["trades"] >= 3]
+    if len(valid) < 2:
+        return (-999.0, -999.0, 999.0, 0, 0), slice_metrics
     mean_exp = float(np.mean([m["expectancy"] for m in valid]))
     min_exp = float(min(m["expectancy"] for m in valid))
     positive_slices = sum(m["total_r"] > 0 for m in valid)
     pf_values = [m["profit_factor"] for m in valid if m["profit_factor"] is not None]
     mean_pf = float(np.mean(pf_values)) if pf_values else -1.0
     total_trades = sum(m["trades"] for m in valid)
-    # Prefer consistency across chronological slices over a single lucky segment.
     return (mean_exp, min_exp, mean_pf, positive_slices, total_trades), slice_metrics
 
 
@@ -90,7 +95,12 @@ def _candidates_for(hypothesis):
     return list(parameter_candidates())
 
 
-def select_params(train: pd.DataFrame, min_trades: int = 10, hypothesis: str = "trend"):
+def select_params(
+    train: pd.DataFrame,
+    min_trades: int = 10,
+    hypothesis: str = "trend",
+    selection_spread: float = SELECTION_SPREAD,
+):
     # Selection remains entirely inside the training window. OOS is never used.
     split = max(1, int(len(train) * 0.75))
     fit = train.iloc[:split].reset_index(drop=True)
@@ -99,18 +109,21 @@ def select_params(train: pd.DataFrame, min_trades: int = 10, hypothesis: str = "
     baseline = StrategyParams(hypothesis=hypothesis)
     ranked = []
     for p in candidates:
-        tr = run_backtest(tune, p)
+        tr = run_backtest(tune, p, spread=selection_spread)
         m = metrics([t.r for t in tr])
         if m["trades"] >= min_trades:
-            stability, slice_metrics = _stability_score(tune, p)
-            ranked.append((p, m, stability, slice_metrics))
+            stability, slice_metrics = _stability_score(
+                tune, p, spread=selection_spread
+            )
+            if stability[0] > -900:
+                ranked.append((p, m, stability, slice_metrics))
     best = baseline
     best_stability = None
     if ranked:
         ranked.sort(key=lambda x: x[2], reverse=True)
         best, _, best_stability, _ = ranked[0]
-    fit_m = metrics([t.r for t in run_backtest(fit, best)])
-    tune_m = metrics([t.r for t in run_backtest(tune, best)])
+    fit_m = metrics([t.r for t in run_backtest(fit, best, spread=selection_spread)])
+    tune_m = metrics([t.r for t in run_backtest(tune, best, spread=selection_spread)])
     return best, {
         "candidate_count": len(candidates),
         "eligible_count": len(ranked),
@@ -118,6 +131,7 @@ def select_params(train: pd.DataFrame, min_trades: int = 10, hypothesis: str = "
         "tune_metrics": tune_m,
         "stability_score": best_stability,
         "selection_score": _score(tune_m),
+        "selection_spread": selection_spread,
     }
 
 
