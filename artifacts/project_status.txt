@@ -1,6 +1,6 @@
 PROJECT COMPLETION: 97%
 PROJECT REMAINING: 3%
-VERSION: v0.2.9-final-research
+VERSION: v0.2.10-cost-aware-research
 LIVE TRADING: OFF
 REAL ORDER: OFF
 PAPER TRADING: ON
@@ -8,17 +8,18 @@ SAFETY LOCKS: VERIFIED
 TESTS: 14/14 passed on independent Railway test deployment
 CI: GitHub Actions workflow configured; independent Railway test confirms the current suite passes
 RAILWAY RESEARCH DEPLOYMENT: SUCCESS
-RAILWAY RESEARCH DEPLOYMENT ID: a0f11bef-a2c6-4642-bc0e-f0d35de687b7
-DATA: 17,275 GBP/USD 5-minute candles retrieved successfully
-BASELINE WF: 260 trades, 25.77% win rate, -59R, expectancy -0.2269R, PF 0.6943, max DD 60R, max loss streak 14
-RESEARCH: TREND + MEAN_REVERSION + BREAKOUT + PULLBACK completed end-to-end
-TREND OOS COMBINED: 342 trades, 33.63% win rate, -49.5R, expectancy -0.1447R, PF 0.7819, max DD 49.5R, max loss streak 18
-MEAN_REVERSION OOS COMBINED: 3 trades, 33.33% win rate, approximately 0R, too few trades for validation
-BREAKOUT OOS COMBINED: completed; positive folds exist but aggregate robustness is not sufficient for validation
-PULLBACK OOS COMBINED: 27 trades, 29.63% win rate, -6R, expectancy -0.2222R, PF 0.6842, max DD 8R, max loss streak 7
-PULLBACK FOLDS: F1 -6R, F2 +1R, F3 +2R, F4 -3R
-PULLBACK ROBUSTNESS: neighbor-positive rates 0%, 50%, 91.7%, 0%
-PULLBACK MONTE CARLO: p50 max DD 9R, p95 12.525R, max 15.5R, terminal -6R
+RAILWAY RESEARCH DEPLOYMENT ID: a06793a2-720b-45e8-a584-9a83b256661a
+DATA: 17,274 GBP/USD 5-minute candles retrieved successfully
+RESEARCH CHANGE: Parameter selection now includes conservative 0.5-pip spread stress and requires evidence across chronological tune slices; OOS remains untouched during selection
+BASELINE WF: 257 trades, 26.07% win rate, -56R, expectancy -0.2179R, PF 0.7053, max DD 61R, max loss streak 14
+TREND OOS COMBINED: 338 trades, 33.73% win rate, -48R, expectancy -0.1420R, PF 0.7857, max DD 50.5R, max loss streak 18
+MEAN_REVERSION OOS COMBINED: 3 trades, 33.33% win rate, approximately 0R; too few trades for validation
+BREAKOUT OOS COMBINED: 295 trades, 35.93% win rate, -10R, expectancy -0.0339R, PF 0.9471, max DD 32.5R, max loss streak 12
+BREAKOUT ROBUSTNESS: neighbor-positive rates 0%, 78.6%, 100%, 7.1%; spread stress turns some positive folds weaker
+PULLBACK OOS COMBINED: 28 trades, 35.71% win rate, -1.5R, expectancy -0.0536R, PF 0.9167, max DD 6R, max loss streak 6
+PULLBACK FOLDS: F1 -3R, F2 +2R, F3 +2.5R, F4 -3R
+PULLBACK ROBUSTNESS: neighbor-positive rates 0%, 58.3%, 91.7%, 0%
+PULLBACK MONTE CARLO: p50 max DD 7R, p95 11R, max 15.5R, terminal -1.5R
 VALIDATION: NOT CONFIRMED
-RESEARCH CONCLUSION: No tested hypothesis currently provides sufficient stable OOS evidence for live trading
-NEXT STEP: Keep paper-only, improve hypotheses/data/cost modeling, rerun independent OOS validation, and only reconsider live mode after confirmed validation.
+RESEARCH CONCLUSION: Cost-aware selection improved the aggregate breakout and pullback results versus the prior run, but no hypothesis yet has sufficiently stable positive OOS evidence.
+NEXT STEP: Add baseline-as-a-selection-candidate to prevent parameter search from replacing a stronger baseline, rerun independent OOS, then reassess validation. Never activate live/real trading without confirmed validation.
