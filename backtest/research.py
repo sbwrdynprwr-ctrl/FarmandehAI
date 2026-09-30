@@ -109,14 +109,16 @@ def select_params(
     baseline = StrategyParams(hypothesis=hypothesis)
     ranked = []
     for p in candidates:
-        tr = run_backtest(tune, p, spread=selection_spread)
-        m = metrics([t.r for t in tr])
-        if m["trades"] >= min_trades:
+        # Candidate eligibility and ranking use FIT only. The tune slice is
+        # held out inside the training window and is never used to choose p.
+        fit_trades = run_backtest(fit, p, spread=selection_spread)
+        fit_m = metrics([t.r for t in fit_trades])
+        if fit_m["trades"] >= min_trades:
             stability, slice_metrics = _stability_score(
-                tune, p, spread=selection_spread
+                fit, p, spread=selection_spread
             )
             if stability[0] > -900:
-                ranked.append((p, m, stability, slice_metrics))
+                ranked.append((p, fit_m, stability, slice_metrics))
     best = baseline
     best_stability = None
     if ranked:
