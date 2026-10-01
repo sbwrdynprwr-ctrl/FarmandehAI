@@ -33,6 +33,7 @@ def main():
     ap.add_argument("--days", type=int, default=30)
     ap.add_argument("--folds", type=int, default=4)
     ap.add_argument("--research", action="store_true")
+    ap.add_argument("--holdout-only", action="store_true")
     ap.add_argument("--run-tests", action="store_true")
     ap.add_argument("--serve", action="store_true")
     args = ap.parse_args()
@@ -51,6 +52,14 @@ def main():
 
     df = load_csv(args.csv) if args.csv else fetch_twelvedata(DataConfig(), days=args.days)
     print(f"DATA_ROWS={len(df)}", flush=True)
+
+    if args.holdout_only:
+        holdout = independent_holdout(df, holdout_ratio=0.20)
+        print(f"INDEPENDENT_HOLDOUT_START={int(len(df) * 0.80)} ROWS={len(df) - int(len(df) * 0.80)}", flush=True)
+        for hypothesis, result in holdout.items():
+            print(f"INDEPENDENT_HOLDOUT={hypothesis}:{json.dumps(result, default=str)}", flush=True)
+        print("INDEPENDENT_HOLDOUT_DONE", flush=True)
+        return
 
     baseline = StrategyParams(hypothesis="trend")
     baseline_trades = run_backtest(df, baseline)
