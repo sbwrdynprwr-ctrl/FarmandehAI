@@ -16,3 +16,4 @@ CMD ["python", "-u", "holdout_runner.py"]
 
 # holdout research runner remains the deployment entrypoint
 # trigger latest-commit deployment for independent holdout validation
+# railway latest-main trigger
