@@ -1,6 +1,7 @@
 """Market-data loading with strict secret handling and historical pagination."""
 from __future__ import annotations
 import os
+import time
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 from typing import Optional
@@ -37,27 +38,44 @@ def _request(config: DataConfig, key: str, start: datetime | None = None, end: d
     params={"symbol":config.symbol,"interval":config.interval,"outputsize":config.outputsize,"timezone":config.timezone,"format":"JSON"}
     if start is not None and end is not None:
         params["start_date"]=start.strftime("%Y-%m-%dT%H:%M:%SZ"); params["end_date"]=end.strftime("%Y-%m-%dT%H:%M:%SZ"); params.pop("outputsize",None)
-    try:
-        response=requests.get("https://api.twelvedata.com/time_series",params=params,headers={"Authorization":f"apikey {key}"},timeout=config.timeout_seconds)
-        response.raise_for_status()
-        payload=response.json()
-    except RequestException as exc:
-        status=getattr(getattr(exc, "response", None), "status_code", None)
-        detail=""
-        resp=getattr(exc, "response", None)
-        if resp is not None:
-            try:
-                body=resp.json()
-                detail=str(body.get("message") or body.get("code") or "")
-            except ValueError:
-                detail=""
-        suffix=f"; status={status}" if status is not None else ""
-        if detail: suffix += f"; message={detail}"
-        raise RuntimeError(f"TwelveData request failed: {exc.__class__.__name__}{suffix}") from None
-    except ValueError: raise RuntimeError("TwelveData returned a non-JSON response") from None
-    if payload.get("status")=="error" or "values" not in payload: raise RuntimeError(f"TwelveData error: {payload.get('message','invalid response')}")
-    rows=[{"timestamp":r["datetime"],"open":r["open"],"high":r["high"],"low":r["low"],"close":r["close"],"volume":r.get("volume")} for r in payload["values"]]
-    return validate_ohlcv(pd.DataFrame(rows))
+
+    for attempt in range(3):
+        try:
+            response=requests.get(
+                "https://api.twelvedata.com/time_series",
+                params=params,
+                headers={"Authorization":f"apikey {key}"},
+                timeout=config.timeout_seconds,
+            )
+            if response.status_code == 429 and attempt < 2:
+                # TwelveData free-tier limits can be hit when a long history
+                # needs more than one request batch. Wait for the next minute.
+                time.sleep(65)
+                continue
+            response.raise_for_status()
+            payload=response.json()
+        except RequestException as exc:
+            status=getattr(getattr(exc, "response", None), "status_code", None)
+            detail=""
+            resp=getattr(exc, "response", None)
+            if resp is not None:
+                try:
+                    body=resp.json()
+                    detail=str(body.get("message") or body.get("code") or "")
+                except ValueError:
+                    detail=""
+            suffix=f"; status={status}" if status is not None else ""
+            if detail: suffix += f"; message={detail}"
+            raise RuntimeError(f"TwelveData request failed: {exc.__class__.__name__}{suffix}") from None
+        except ValueError:
+            raise RuntimeError("TwelveData returned a non-JSON response") from None
+
+        if payload.get("status")=="error" or "values" not in payload:
+            raise RuntimeError(f"TwelveData error: {payload.get('message','invalid response')}")
+        rows=[{"timestamp":r["datetime"],"open":r["open"],"high":r["high"],"low":r["low"],"close":r["close"],"volume":r.get("volume")} for r in payload["values"]]
+        return validate_ohlcv(pd.DataFrame(rows))
+
+    raise RuntimeError("TwelveData rate limit persisted after retries")
 
 def fetch_twelvedata(config: DataConfig, api_key: Optional[str]=None, days: int=30) -> pd.DataFrame:
     key=api_key or os.getenv("TWELVEDATA_API_KEY")
