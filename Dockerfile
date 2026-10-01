@@ -19,3 +19,4 @@ CMD ["python", "-u", "holdout_runner.py"]
 # railway latest-main trigger
 # independent holdout validation trigger 2026-10-01
 # deployment verification trigger 2026-10-01
+# final holdout autodeploy trigger 2026-10-01
