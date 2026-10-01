@@ -50,7 +50,7 @@ def _stability_score(tune: pd.DataFrame, p: StrategyParams, spread: float = SELE
 
 def parameter_candidates():
     for ef, es, rp, am, rr, bm in itertools.product(
-        (20, 25), (45, 50, 55), (14,), (1.25, 1.5), (1.5, 2.0), (0.55,),
+        (15, 25), (45, 50, 55), (14,), (1.25, 1.5), (1.5, 2.0), (0.45, 0.55),
     ):
         if ef >= es:
             continue
@@ -70,7 +70,7 @@ def mean_reversion_candidates():
 
 def breakout_candidates():
     for dp, am, rr, bm in itertools.product(
-        (15, 20, 30, 40), (1.25, 1.5), (1.5, 2.0), (0.45, 0.55),
+        (10, 15, 20, 30), (1.25, 1.5), (1.5, 2.0), (0.40, 0.50),
     ):
         yield StrategyParams(ema_fast=20, ema_slow=50, rsi_period=14,
                              atr_period=14, atr_multiplier=am, rr=rr,
