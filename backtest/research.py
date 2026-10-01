@@ -271,7 +271,7 @@ def monte_carlo(rs: Iterable[float], simulations: int = 1000, seed: int = 42):
         peak = np.maximum.accumulate(np.r_[0.0, equity])
         dds.append(float((peak[1:] - equity).max() if len(equity) else 0.0))
     return {"simulations": simulations, "max_dd_p50": float(np.percentile(dds, 50)),
-            "max_dd_p95": float(np.percentile(ddds, 95)), "max_dd_max": float(max(dds)),
+            "max_dd_p95": float(np.percentile(dds, 95)), "max_dd_max": float(max(dds)),
             "terminal_r": float(sum(vals))}
 
 
