@@ -14,6 +14,10 @@ from strategy.strategy import StrategyParams, indicators
 
 
 SELECTION_SPREAD = 0.00005
+# Keep the expensive chronological stability pass focused on the strongest
+# training candidates. This changes no OOS data usage: all screening remains
+# inside the training window.
+MAX_STABILITY_CANDIDATES = 20
 
 
 def _score(m):
@@ -35,7 +39,6 @@ def _stability_score(tune: pd.DataFrame, p: StrategyParams, spread: float = SELE
         else:
             trades = run_backtest(tune.iloc[idx].reset_index(drop=True), p, spread=spread)
         slice_metrics.append(metrics([t.r for t in trades]))
-    # Require enough activity before treating a slice as evidence.
     valid = [m for m in slice_metrics if m["trades"] >= 3]
     if len(valid) < 2:
         return (-999.0, -999.0, 999.0, 0, 0), slice_metrics
@@ -113,9 +116,10 @@ def select_params(
     baseline = StrategyParams(hypothesis=hypothesis)
     ranked = []
     indicator_cache = {}
+
+    # Stage 1: cheap fit screening for every candidate. Indicators are cached
+    # by period parameters so repeated combinations reuse rolling calculations.
     for p in candidates:
-        # Indicators depend only on these period parameters. Cache the FIT
-        # frame so candidates sharing periods reuse rolling calculations.
         key = (p.ema_fast, p.ema_slow, p.rsi_period, p.atr_period, p.donchian_period)
         x_fit = indicator_cache.get(key)
         if x_fit is None:
@@ -124,25 +128,52 @@ def select_params(
         fit_trades = _run_backtest_indicators(x_fit, p, spread=selection_spread)
         fit_m = metrics([t.r for t in fit_trades])
         if fit_m["trades"] >= min_trades:
-            stability, slice_metrics = _stability_score(
-                fit, p, spread=selection_spread, precomputed=x_fit
-            )
-            if stability[0] > -900:
-                ranked.append((p, fit_m, stability, slice_metrics))
+            ranked.append((p, fit_m, x_fit))
+
+    # Stage 2: the expensive chronological stability test is run only on the
+    # strongest training candidates. No holdout/OOS observations are touched.
+    ranked.sort(key=lambda x: _score(x[1]), reverse=True)
+    stability_candidates = ranked[:MAX_STABILITY_CANDIDATES]
+
+    stable = []
+    for p, fit_m, x_fit in stability_candidates:
+        stability, slice_metrics = _stability_score(
+            fit, p, spread=selection_spread, precomputed=x_fit
+        )
+        if stability[0] > -900:
+            stable.append((p, fit_m, stability, slice_metrics))
+
     best = baseline
     best_stability = None
-    if ranked:
-        ranked.sort(key=lambda x: (x[2][3], x[2][1], x[2][0], x[2][2], -x[1]["max_drawdown"], x[2][4]), reverse=True)
-        best, _, best_stability, _ = ranked[0]
-    best_key = (best.ema_fast, best.ema_slow, best.rsi_period, best.atr_period, best.donchian_period)
+    if stable:
+        stable.sort(
+            key=lambda x: (
+                x[2][3], x[2][1], x[2][0], x[2][2],
+                -x[1]["max_drawdown"], x[2][4]
+            ),
+            reverse=True,
+        )
+        best, _, best_stability, _ = stable[0]
+
+    best_key = (
+        best.ema_fast, best.ema_slow, best.rsi_period,
+        best.atr_period, best.donchian_period
+    )
     best_x_fit = indicator_cache.get(best_key)
     if best_x_fit is None:
         best_x_fit = indicators(fit, best)
-    fit_m = metrics([t.r for t in _run_backtest_indicators(best_x_fit, best, spread=selection_spread)])
-    tune_m = metrics([t.r for t in run_backtest(tune, best, spread=selection_spread)])
+    fit_m = metrics([
+        t.r for t in _run_backtest_indicators(
+            best_x_fit, best, spread=selection_spread
+        )
+    ])
+    tune_m = metrics([
+        t.r for t in run_backtest(tune, best, spread=selection_spread)
+    ])
     return best, {
         "candidate_count": len(candidates),
         "eligible_count": len(ranked),
+        "stability_evaluated": len(stability_candidates),
         "fit_metrics": fit_m,
         "tune_metrics": tune_m,
         "stability_score": best_stability,
@@ -240,8 +271,9 @@ def monte_carlo(rs: Iterable[float], simulations: int = 1000, seed: int = 42):
         peak = np.maximum.accumulate(np.r_[0.0, equity])
         dds.append(float((peak[1:] - equity).max() if len(equity) else 0.0))
     return {"simulations": simulations, "max_dd_p50": float(np.percentile(dds, 50)),
-            "max_dd_p95": float(np.percentile(dds, 95)), "max_dd_max": float(max(dds)),
+            "max_dd_p95": float(np.percentile(ddds, 95)), "max_dd_max": float(max(dds)),
             "terminal_r": float(sum(vals))}
+
 
 def independent_holdout(df: pd.DataFrame, holdout_ratio: float = 0.20):
     """Evaluate each hypothesis once on a final unseen chronological holdout.
