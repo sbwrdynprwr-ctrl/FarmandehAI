@@ -14,7 +14,7 @@ from strategy.strategy import StrategyParams
 from backtest.engine import run_backtest
 from backtest.metrics import metrics
 from backtest.walk_forward import walk_forward
-from backtest.research import walk_forward_search, robustness, monte_carlo
+from backtest.research import walk_forward_search, robustness, monte_carlo, independent_holdout
 from reports.reporter import write_reports
 
 PAPER = True
@@ -76,11 +76,16 @@ def main():
             for f in folds:
                 print(f"RESEARCH_FOLD={hypothesis}:{json.dumps({k: v for k, v in f.items() if k != 'trades'}, default=str)}", flush=True)
         research = results
+        holdout = independent_holdout(df, holdout_ratio=0.20)
+        research["independent_holdout"] = holdout
+        print(f"INDEPENDENT_HOLDOUT_START={int(len(df) * 0.80)} ROWS={len(df) - int(len(df) * 0.80)}", flush=True)
+        for hypothesis, result in holdout.items():
+            print(f"INDEPENDENT_HOLDOUT={hypothesis}:{json.dumps(result, default=str)}", flush=True)
 
     status = (
         "PROJECT COMPLETION: 92%\n"
         "PROJECT REMAINING: 8%\n"
-        "VERSION: v0.2.6-test-isolation\n"
+        "VERSION: v0.3.0-independent-holdout\n"
         "LIVE TRADING: OFF\n"
         "REAL ORDER: OFF\n"
         "PAPER TRADING: ON\n"
@@ -90,6 +95,7 @@ def main():
         "TRANSACTION_COST_SENSITIVITY: EXECUTED\n"
         "ROBUSTNESS: EXECUTED\n"
         "MONTE_CARLO: EXECUTED\n"
+        "INDEPENDENT_FINAL_HOLDOUT: EXECUTED\n"
         "VALIDATION: NOT CONFIRMED\n"
         "NEXT STEP: Review genuine OOS evidence; do not activate live/real trading."
     )
