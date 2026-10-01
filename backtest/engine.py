@@ -16,13 +16,72 @@ class Trade:
     r: float
     reason: str
 
+def _signal_array(x: pd.DataFrame, p: StrategyParams) -> np.ndarray:
+    """Vectorized equivalent of signal_at for the full indicator frame."""
+    n = len(x)
+    out = np.full(n, "", dtype=object)
+    body = x["body_ratio"].to_numpy(dtype=float)
+    atr = x["atr"].to_numpy(dtype=float)
+
+    if p.hypothesis == "mean_reversion":
+        rsi = x["rsi"].to_numpy(dtype=float)
+        upper = x["bb_upper"].to_numpy(dtype=float)
+        lower = x["bb_lower"].to_numpy(dtype=float)
+        op = x["open"].to_numpy(dtype=float)
+        cl = x["close"].to_numpy(dtype=float)
+        valid = np.isfinite(rsi) & np.isfinite(atr) & np.isfinite(body) & np.isfinite(upper) & np.isfinite(lower)
+        valid &= body >= p.body_min
+        long_mask = valid & (cl <= lower) & (rsi <= 35) & (cl > op)
+        short_mask = valid & (cl >= upper) & (rsi >= 65) & (cl < op)
+        min_history = max(p.rsi_period, p.atr_period, 30)
+    elif p.hypothesis == "breakout":
+        upper = x["donchian_upper"].to_numpy(dtype=float)
+        lower = x["donchian_lower"].to_numpy(dtype=float)
+        op = x["open"].to_numpy(dtype=float)
+        cl = x["close"].to_numpy(dtype=float)
+        valid = np.isfinite(atr) & np.isfinite(body) & np.isfinite(upper) & np.isfinite(lower)
+        valid &= body >= p.body_min
+        long_mask = valid & (cl > upper) & (cl > op)
+        short_mask = valid & (cl < lower) & (cl < op)
+        min_history = max(p.atr_period, p.donchian_period, 30)
+    elif p.hypothesis == "pullback":
+        ef = x["ema_fast"].to_numpy(dtype=float)
+        es = x["ema_slow"].to_numpy(dtype=float)
+        rsi = x["rsi"].to_numpy(dtype=float)
+        macd = x["macd"].to_numpy(dtype=float)
+        sig = x["macd_signal"].to_numpy(dtype=float)
+        op = x["open"].to_numpy(dtype=float)
+        cl = x["close"].to_numpy(dtype=float)
+        valid = np.isfinite(ef) & np.isfinite(es) & np.isfinite(rsi) & np.isfinite(atr) & np.isfinite(body) & np.isfinite(macd) & np.isfinite(sig)
+        valid &= body >= p.body_min
+        long_mask = valid & (ef > es) & (rsi >= 40) & (rsi <= 50) & (macd >= sig) & (cl > op)
+        short_mask = valid & (ef < es) & (rsi >= 50) & (rsi <= 60) & (macd <= sig) & (cl < op)
+        min_history = max(p.ema_slow, p.rsi_period, p.atr_period, 30)
+    else:
+        ef = x["ema_fast"].to_numpy(dtype=float)
+        es = x["ema_slow"].to_numpy(dtype=float)
+        rsi = x["rsi"].to_numpy(dtype=float)
+        macd = x["macd"].to_numpy(dtype=float)
+        sig = x["macd_signal"].to_numpy(dtype=float)
+        op = x["open"].to_numpy(dtype=float)
+        cl = x["close"].to_numpy(dtype=float)
+        valid = np.isfinite(ef) & np.isfinite(es) & np.isfinite(rsi) & np.isfinite(atr) & np.isfinite(macd) & np.isfinite(sig) & np.isfinite(body)
+        valid &= body >= p.body_min
+        long_mask = valid & (ef > es) & (rsi >= 50) & (macd > sig) & (cl > op)
+        short_mask = valid & (ef < es) & (rsi <= 50) & (macd < sig) & (cl < op)
+        min_history = max(p.ema_slow, p.rsi_period, p.atr_period, 30)
+
+    long_mask[:min_history] = False
+    short_mask[:min_history] = False
+    out[long_mask] = "LONG"
+    out[short_mask] = "SHORT"
+    return out
+
 def run_backtest(df: pd.DataFrame, params=StrategyParams(), initial_equity=10000.0,
                  spread=0.0, start_index=None, end_index=None):
-    """Run the original bar-by-bar model with NumPy arrays for the hot exit loop.
+    """Fast equivalent of the original bar-by-bar backtest.
 
-    Trading semantics are unchanged: signal on bar i, enter at i+1 open,
-    SL/TP are checked from the entry bar onward, and when both are hit on
-    one candle SL is resolved first.
+    Signal/entry/SL/TP semantics are unchanged. Same-bar SL+TP resolves to SL.
     """
     if not df["timestamp"].is_monotonic_increasing:
         raise ValueError("Backtest requires chronological data")
@@ -33,18 +92,17 @@ def run_backtest(df: pd.DataFrame, params=StrategyParams(), initial_equity=10000
     if start > stop:
         return []
 
-    # Extract only columns used by the execution loop once. Avoid repeated
-    # DataFrame iloc/scalar access for every candle in every candidate.
+    signals = _signal_array(x, params)
     opens = x["open"].to_numpy(dtype=float)
     highs = x["high"].to_numpy(dtype=float)
     lows = x["low"].to_numpy(dtype=float)
     atrs = x["atr"].to_numpy(dtype=float)
     timestamps = x["timestamp"].to_numpy()
+
     trades = []
     i = start
-
     while i <= stop:
-        side = signal_at(x, i, params)
+        side = signals[i]
         if not side:
             i += 1
             continue
@@ -60,55 +118,32 @@ def run_backtest(df: pd.DataFrame, params=StrategyParams(), initial_equity=10000
             entry += spread / 2
             sl = entry - risk
             tp = entry + risk * params.rr
+            sl_hits = np.flatnonzero(lows[i + 1:stop + 1] <= sl)
+            tp_hits = np.flatnonzero(highs[i + 1:stop + 1] >= tp)
         else:
             entry -= spread / 2
             sl = entry + risk
             tp = entry - risk * params.rr
+            sl_hits = np.flatnonzero(highs[i + 1:stop + 1] >= sl)
+            tp_hits = np.flatnonzero(lows[i + 1:stop + 1] <= tp)
 
-        exit_price = None
-        reason = None
-        j = i + 1
-        if side == "LONG":
-            while j <= stop:
-                lo = lows[j]
-                hi = highs[j]
-                hit_sl = lo <= sl
-                hit_tp = hi >= tp
-                if hit_sl and hit_tp:
-                    exit_price = sl
-                    reason = "SL_AND_TP_SAME_BAR_SL_FIRST"
-                    break
-                if hit_sl:
-                    exit_price = sl
-                    reason = "STOP_LOSS"
-                    break
-                if hit_tp:
-                    exit_price = tp
-                    reason = "TAKE_PROFIT"
-                    break
-                j += 1
-        else:
-            while j <= stop:
-                lo = lows[j]
-                hi = highs[j]
-                hit_sl = hi >= sl
-                hit_tp = lo <= tp
-                if hit_sl and hit_tp:
-                    exit_price = sl
-                    reason = "SL_AND_TP_SAME_BAR_SL_FIRST"
-                    break
-                if hit_sl:
-                    exit_price = sl
-                    reason = "STOP_LOSS"
-                    break
-                if hit_tp:
-                    exit_price = tp
-                    reason = "TAKE_PROFIT"
-                    break
-                j += 1
-
-        if exit_price is None:
+        sl_idx = int(sl_hits[0]) + i + 1 if len(sl_hits) else None
+        tp_idx = int(tp_hits[0]) + i + 1 if len(tp_hits) else None
+        if sl_idx is None and tp_idx is None:
             break
+
+        if sl_idx is None or (tp_idx is not None and tp_idx < sl_idx):
+            j = tp_idx
+            exit_price = tp
+            reason = "TAKE_PROFIT"
+        elif tp_idx is None or sl_idx < tp_idx:
+            j = sl_idx
+            exit_price = sl
+            reason = "STOP_LOSS"
+        else:
+            j = sl_idx
+            exit_price = sl
+            reason = "SL_AND_TP_SAME_BAR_SL_FIRST"
 
         executed_exit = (
             exit_price - spread / 2 if side == "LONG"
@@ -126,16 +161,10 @@ def run_backtest(df: pd.DataFrame, params=StrategyParams(), initial_equity=10000
 
     return trades
 
-
 def run_backtest_window(df: pd.DataFrame, params=StrategyParams(),
                         start_index: int = 0, end_index=None,
                         spread: float = 0.0):
-    """Backtest an OOS window with prior candles available for indicator warm-up.
-
-    Signals may use the last completed candle before start_index so an entry at
-    the first OOS candle is evaluated correctly. No candle after end_index is
-    used for signals or exits.
-    """
+    """Backtest an OOS window with prior candles available for indicator warm-up."""
     if end_index is None:
         end_index = len(df)
     start_index = int(start_index)
@@ -143,10 +172,5 @@ def run_backtest_window(df: pd.DataFrame, params=StrategyParams(),
     if not 0 <= start_index < end_index <= len(df):
         raise ValueError("invalid backtest window")
     signal_start = max(1, start_index - 1)
-    return run_backtest(
-        df,
-        params=params,
-        spread=spread,
-        start_index=signal_start,
-        end_index=end_index,
-    )
+    return run_backtest(df, params=params, spread=spread,
+                        start_index=signal_start, end_index=end_index)
