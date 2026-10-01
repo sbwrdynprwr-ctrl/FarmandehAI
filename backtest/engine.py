@@ -77,15 +77,15 @@ def _signal_array(x: pd.DataFrame, p: StrategyParams) -> np.ndarray:
     out[short_mask] = "SHORT"
     return out
 
-def run_backtest(df: pd.DataFrame, params=StrategyParams(), initial_equity=10000.0,
-                 spread=0.0, start_index=None, end_index=None):
+def _run_backtest_indicators(x: pd.DataFrame, params=StrategyParams(),
+                             initial_equity=10000.0, spread=0.0,
+                             start_index=None, end_index=None):
     """Fast equivalent of the original bar-by-bar backtest.
 
     Signal/entry/SL/TP semantics are unchanged. Same-bar SL+TP resolves to SL.
     """
     if not df["timestamp"].is_monotonic_increasing:
         raise ValueError("Backtest requires chronological data")
-    x = indicators(df, params)
     n = len(x)
     start = 1 if start_index is None else max(1, int(start_index))
     stop = n - 2 if end_index is None else min(n - 2, int(end_index) - 1)
@@ -160,6 +160,14 @@ def run_backtest(df: pd.DataFrame, params=StrategyParams(), initial_equity=10000
         i = j + 1
 
     return trades
+
+def run_backtest(df: pd.DataFrame, params=StrategyParams(), initial_equity=10000.0,
+                 spread=0.0, start_index=None, end_index=None):
+    if not df["timestamp"].is_monotonic_increasing:
+        raise ValueError("Backtest requires chronological data")
+    x = indicators(df, params)
+    return _run_backtest_indicators(x, params, initial_equity, spread, start_index, end_index)
+
 
 def run_backtest_window(df: pd.DataFrame, params=StrategyParams(),
                         start_index: int = 0, end_index=None,
