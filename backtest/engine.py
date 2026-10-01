@@ -7,12 +7,16 @@ from strategy.strategy import StrategyParams, indicators, signal_at
 class Trade:
     timestamp: object; side: str; entry: float; stop_loss: float; take_profit: float; exit: float; result: str; r: float; reason: str
 
-def run_backtest(df: pd.DataFrame, params=StrategyParams(), initial_equity=10000.0, spread=0.0):
+def run_backtest(df: pd.DataFrame, params=StrategyParams(), initial_equity=10000.0, spread=0.0, start_index=None, end_index=None):
     if not df["timestamp"].is_monotonic_increasing:
         raise ValueError("Backtest requires chronological data")
     x = indicators(df, params)
-    trades=[]; i=1
-    while i < len(x)-1:
+    start = 1 if start_index is None else max(1, int(start_index))
+    stop = len(x) - 1 if end_index is None else min(len(x) - 1, int(end_index) - 1)
+    if start > stop:
+        return []
+    trades=[]; i=start
+    while i <= stop:
         side = signal_at(x, i, params)
         if not side:
             i += 1; continue
@@ -26,7 +30,7 @@ def run_backtest(df: pd.DataFrame, params=StrategyParams(), initial_equity=10000
         else:
             entry -= spread/2; sl=entry+risk; tp=entry-risk*params.rr
         exit_price=None; reason=None; j=i+1
-        while j < len(x):
+        while j <= stop:
             row=x.iloc[j]
             if side == "LONG":
                 hit_sl=row.low <= sl; hit_tp=row.high >= tp
@@ -48,3 +52,26 @@ def run_backtest(df: pd.DataFrame, params=StrategyParams(), initial_equity=10000
         trades.append(Trade(x.iloc[i].timestamp, side, entry, sl, tp, exit_price, "WIN" if r>0 else "LOSS", float(r), reason))
         i=j+1
     return trades
+
+
+def run_backtest_window(df: pd.DataFrame, params=StrategyParams(), start_index: int = 0, end_index=None, spread: float = 0.0):
+    """Backtest an OOS window with prior candles available for indicator warm-up.
+
+    Signals may use the last completed candle before start_index so an entry at
+    the first OOS candle is evaluated correctly. No candle after end_index is
+    used for signals or exits.
+    """
+    if end_index is None:
+        end_index = len(df)
+    start_index = int(start_index)
+    end_index = int(end_index)
+    if not 0 <= start_index < end_index <= len(df):
+        raise ValueError("invalid backtest window")
+    signal_start = max(1, start_index - 1)
+    return run_backtest(
+        df,
+        params=params,
+        spread=spread,
+        start_index=signal_start,
+        end_index=end_index,
+    )
