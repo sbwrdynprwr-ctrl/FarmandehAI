@@ -77,6 +77,48 @@ def _signal_array(x: pd.DataFrame, p: StrategyParams) -> np.ndarray:
     out[short_mask] = "SHORT"
     return out
 
+
+class _RangeFirstHit:
+    """Static segment tree for leftmost threshold hits in a price series."""
+    def __init__(self, values):
+        a = np.asarray(values, dtype=float)
+        self.n = len(a)
+        size = 1
+        while size < self.n:
+            size <<= 1
+        self.size = size
+        self.lo = np.full(2 * size, np.inf, dtype=float)
+        self.hi = np.full(2 * size, -np.inf, dtype=float)
+        self.lo[size:size + self.n] = a
+        self.hi[size:size + self.n] = a
+        for k in range(size - 1, 0, -1):
+            self.lo[k] = min(self.lo[2*k], self.lo[2*k+1])
+            self.hi[k] = max(self.hi[2*k], self.hi[2*k+1])
+
+    def first_le(self, left, right, threshold):
+        return self._first(left, right, threshold, le=True)
+
+    def first_ge(self, left, right, threshold):
+        return self._first(left, right, threshold, le=False)
+
+    def _first(self, left, right, threshold, le):
+        if left > right or self.n == 0:
+            return None
+        def visit(node, nl, nr):
+            if nr < left or right < nl:
+                return None
+            bound = self.lo[node] if le else self.hi[node]
+            if (bound > threshold) if le else (bound < threshold):
+                return None
+            if nl == nr:
+                return nl if nl < self.n else None
+            mid = (nl + nr) // 2
+            hit = visit(node * 2, nl, mid)
+            if hit is not None:
+                return hit
+            return visit(node * 2 + 1, mid + 1, nr)
+        return visit(1, 0, self.size - 1)
+
 def _run_backtest_indicators(x: pd.DataFrame, params=StrategyParams(),
                              initial_equity=10000.0, spread=0.0,
                              start_index=None, end_index=None):
@@ -98,6 +140,8 @@ def _run_backtest_indicators(x: pd.DataFrame, params=StrategyParams(),
     lows = x["low"].to_numpy(dtype=float)
     atrs = x["atr"].to_numpy(dtype=float)
     timestamps = x["timestamp"].to_numpy()
+    low_tree = _RangeFirstHit(lows)
+    high_tree = _RangeFirstHit(highs)
 
     trades = []
     i = start
@@ -118,17 +162,14 @@ def _run_backtest_indicators(x: pd.DataFrame, params=StrategyParams(),
             entry += spread / 2
             sl = entry - risk
             tp = entry + risk * params.rr
-            sl_hits = np.flatnonzero(lows[i + 1:stop + 1] <= sl)
-            tp_hits = np.flatnonzero(highs[i + 1:stop + 1] >= tp)
+            sl_idx = low_tree.first_le(i + 1, stop, sl)
+            tp_idx = high_tree.first_ge(i + 1, stop, tp)
         else:
             entry -= spread / 2
             sl = entry + risk
             tp = entry - risk * params.rr
-            sl_hits = np.flatnonzero(highs[i + 1:stop + 1] >= sl)
-            tp_hits = np.flatnonzero(lows[i + 1:stop + 1] <= tp)
-
-        sl_idx = int(sl_hits[0]) + i + 1 if len(sl_hits) else None
-        tp_idx = int(tp_hits[0]) + i + 1 if len(tp_hits) else None
+            sl_idx = high_tree.first_ge(i + 1, stop, sl)
+            tp_idx = low_tree.first_le(i + 1, stop, tp)
         if sl_idx is None and tp_idx is None:
             break
 
