@@ -35,3 +35,6 @@ Validation remains `NOT CONFIRMED` until genuine data and the required tests are
 
 ## Research runtime
 The research runtime uses the strategy module committed in the repository. It does not download or overwrite source code at startup, so test execution remains isolated from network availability.
+
+## Holdout runtime marker
+The current holdout runner is intentionally executed with real/live trading disabled while the independent forward validation is completed.
