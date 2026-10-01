@@ -4,6 +4,7 @@ import time
 import traceback
 
 print("FARMANDEHAI_BOOT=python_started", flush=True)
+print("FARMANDEHAI_BUILD=post-0521-live-source", flush=True)
 print(f"FARMANDEHAI_ENV=PAPER:{os.getenv('PAPER')} LIVE:{os.getenv('LIVE')} REAL:{os.getenv('REAL')}", flush=True)
 
 try:
@@ -22,7 +23,10 @@ try:
 
     holdout_ratio = float(os.getenv("HOLDOUT_RATIO", "0.10"))
     print(f"HOLDOUT_RATIO={holdout_ratio}", flush=True)
+
+    started = time.time()
     results = independent_holdout(df, holdout_ratio=holdout_ratio)
+    print(f"HOLDOUT_SECONDS={time.time() - started:.1f}", flush=True)
 
     for hypothesis, result in results.items():
         print(f"FORWARD_HOLDOUT={hypothesis}:{json.dumps(result, default=str)}", flush=True)
