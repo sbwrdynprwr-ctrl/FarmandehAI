@@ -228,3 +228,32 @@ def monte_carlo(rs: Iterable[float], simulations: int = 1000, seed: int = 42):
     return {"simulations": simulations, "max_dd_p50": float(np.percentile(dds, 50)),
             "max_dd_p95": float(np.percentile(dds, 95)), "max_dd_max": float(max(dds)),
             "terminal_r": float(sum(vals))}
+
+def independent_holdout(df: pd.DataFrame, holdout_ratio: float = 0.20):
+    """Evaluate each hypothesis once on a final unseen chronological holdout.
+
+    Parameter selection is performed only on the pre-holdout portion. The
+    holdout is never used for parameter or hypothesis selection.
+    """
+    if not 0.10 <= holdout_ratio <= 0.40:
+        raise ValueError("holdout_ratio must be between 0.10 and 0.40")
+    n = len(df)
+    holdout_start = int(n * (1.0 - holdout_ratio))
+    if holdout_start < 100 or n - holdout_start < 50:
+        raise ValueError("dataset is too small for independent holdout")
+    results = {}
+    for hypothesis in ("trend", "mean_reversion", "breakout", "pullback"):
+        selected, selection = select_params(
+            df.iloc[:holdout_start].reset_index(drop=True),
+            hypothesis=hypothesis,
+        )
+        trades = run_backtest_window(df, selected, holdout_start, n)
+        holdout_metrics = metrics([t.r for t in trades])
+        results[hypothesis] = {
+            "holdout_start": holdout_start,
+            "holdout_rows": n - holdout_start,
+            "params": asdict(selected),
+            "selection": selection,
+            "holdout_metrics": holdout_metrics,
+        }
+    return results
