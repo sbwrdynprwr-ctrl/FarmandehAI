@@ -37,3 +37,17 @@ def test_spread_is_round_trip_cost(monkeypatch):
     with_spread = run_backtest(df, params=StrategyParams(atr_multiplier=1.0), spread=0.02)
     assert no_spread[0].r == pytest.approx(2.0)
     assert with_spread[0].r < no_spread[0].r
+
+
+def test_oos_window_uses_prior_candles_for_warmup(monkeypatch):
+    df = pd.DataFrame({
+        "timestamp": pd.date_range("2026-01-01", periods=6, freq="5min"),
+        "open": [1.0]*6, "high": [1.2]*6, "low": [0.8]*6, "close": [1.0]*6,
+    })
+    fake = df.copy()
+    fake["atr"] = 0.1
+    monkeypatch.setattr(engine, "indicators", lambda data, params: fake)
+    monkeypatch.setattr(engine, "signal_at", lambda x, i, params: "LONG" if i == 2 else None)
+    trades = engine.run_backtest_window(df, StrategyParams(atr_multiplier=1.0), start_index=3, end_index=6)
+    assert len(trades) == 1
+    assert trades[0].timestamp == df.iloc[2].timestamp
