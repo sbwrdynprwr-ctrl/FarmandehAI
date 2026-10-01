@@ -8,7 +8,7 @@ from typing import Iterable
 import numpy as np
 import pandas as pd
 
-from backtest.engine import run_backtest
+from backtest.engine import run_backtest, run_backtest_window
 from backtest.metrics import metrics
 from strategy.strategy import StrategyParams
 
@@ -154,9 +154,9 @@ def walk_forward_search(df: pd.DataFrame, folds: int = 4, train_ratio: float = 0
         train = df.iloc[:oos_start].reset_index(drop=True)
         oos = df.iloc[oos_start:oos_end].reset_index(drop=True)
         selected, selection = select_params(train, hypothesis=hypothesis)
-        oos_trades = run_backtest(oos, selected)
+        oos_trades = run_backtest_window(df, selected, oos_start, oos_end)
         oos_m = metrics([t.r for t in oos_trades])
-        baseline_trades = run_backtest(oos, StrategyParams(hypothesis=hypothesis))
+        baseline_trades = run_backtest_window(df, StrategyParams(hypothesis=hypothesis), oos_start, oos_end)
         baseline_m = metrics([t.r for t in baseline_trades])
         folds_out.append({
             "fold": k + 1, "train_rows": len(train), "oos_rows": len(oos),
@@ -201,8 +201,8 @@ def robustness(df: pd.DataFrame, folds_out):
             end = len(df)
         oos = df.iloc[start:end].reset_index(drop=True)
         p = StrategyParams(**f["params"])
-        neighbors = [metrics([t.r for t in run_backtest(oos, q)]) for q in _neighbor_params(p)]
-        base = metrics([t.r for t in run_backtest(oos, p)])
+        neighbors = [metrics([t.r for t in run_backtest_window(df, q, start, end)]) for q in _neighbor_params(p)]
+        base = metrics([t.r for t in run_backtest_window(df, p, start, end)])
         positive = sum(m["total_r"] > 0 for m in neighbors)
         rows.append({"fold": f["fold"], "selected_oos": base,
                      "neighbor_count": len(neighbors),
@@ -210,7 +210,7 @@ def robustness(df: pd.DataFrame, folds_out):
                      "neighbor_positive_rate": positive / len(neighbors) if neighbors else 0.0})
         for spread in (0.0, 0.00005, 0.00010):
             spread_results.append({"fold": f["fold"], "spread": spread,
-                                   "metrics": metrics([t.r for t in run_backtest(oos, p, spread=spread)])})
+                                   "metrics": metrics([t.r for t in run_backtest_window(df, p, start, end, spread=spread)])})
     return {"folds": rows, "spread_sensitivity": spread_results}
 
 
