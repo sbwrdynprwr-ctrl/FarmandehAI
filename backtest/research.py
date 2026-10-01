@@ -8,9 +8,9 @@ from typing import Iterable
 import numpy as np
 import pandas as pd
 
-from backtest.engine import run_backtest, run_backtest_window
+from backtest.engine import run_backtest, run_backtest_window, _run_backtest_indicators
 from backtest.metrics import metrics
-from strategy.strategy import StrategyParams
+from strategy.strategy import StrategyParams, indicators
 
 
 SELECTION_SPREAD = 0.00005
@@ -21,20 +21,20 @@ def _score(m):
     return (m["expectancy"], pf, -m["max_drawdown"], m["trades"])
 
 
-def _stability_score(tune: pd.DataFrame, p: StrategyParams, spread: float = SELECTION_SPREAD):
+def _stability_score(tune: pd.DataFrame, p: StrategyParams, spread: float = SELECTION_SPREAD, precomputed=None):
     """Score a candidate on chronological slices with conservative spread costs."""
     if len(tune) < 60:
-        m = metrics([t.r for t in run_backtest(tune, p, spread=spread)])
+        m = metrics([t.r for t in (_run_backtest_indicators(precomputed, p, spread=spread) if precomputed is not None else run_backtest(tune, p, spread=spread))])
         return _score(m), [m]
     index_chunks = np.array_split(np.arange(len(tune)), 3)
-    slice_metrics = [
-        metrics([
-            t.r for t in run_backtest(
-                tune.iloc[idx].reset_index(drop=True), p, spread=spread
-            )
-        ])
-        for idx in index_chunks
-    ]
+    slice_metrics = []
+    for idx in index_chunks:
+        if precomputed is not None:
+            tx = precomputed.iloc[idx].reset_index(drop=True)
+            trades = _run_backtest_indicators(tx, p, spread=spread)
+        else:
+            trades = run_backtest(tune.iloc[idx].reset_index(drop=True), p, spread=spread)
+        slice_metrics.append(metrics([t.r for t in trades]))
     # Require enough activity before treating a slice as evidence.
     valid = [m for m in slice_metrics if m["trades"] >= 3]
     if len(valid) < 2:
@@ -112,14 +112,20 @@ def select_params(
     candidates = _candidates_for(hypothesis)
     baseline = StrategyParams(hypothesis=hypothesis)
     ranked = []
+    indicator_cache = {}
     for p in candidates:
-        # Candidate eligibility and ranking use FIT only. The tune slice is
-        # held out inside the training window and is never used to choose p.
-        fit_trades = run_backtest(fit, p, spread=selection_spread)
+        # Indicators depend only on these period parameters. Cache the FIT
+        # frame so candidates sharing periods reuse rolling calculations.
+        key = (p.ema_fast, p.ema_slow, p.rsi_period, p.atr_period, p.donchian_period)
+        x_fit = indicator_cache.get(key)
+        if x_fit is None:
+            x_fit = indicators(fit, p)
+            indicator_cache[key] = x_fit
+        fit_trades = _run_backtest_indicators(x_fit, p, spread=selection_spread)
         fit_m = metrics([t.r for t in fit_trades])
         if fit_m["trades"] >= min_trades:
             stability, slice_metrics = _stability_score(
-                fit, p, spread=selection_spread
+                fit, p, spread=selection_spread, precomputed=x_fit
             )
             if stability[0] > -900:
                 ranked.append((p, fit_m, stability, slice_metrics))
@@ -128,7 +134,11 @@ def select_params(
     if ranked:
         ranked.sort(key=lambda x: (x[2][3], x[2][1], x[2][0], x[2][2], -x[1]["max_drawdown"], x[2][4]), reverse=True)
         best, _, best_stability, _ = ranked[0]
-    fit_m = metrics([t.r for t in run_backtest(fit, best, spread=selection_spread)])
+    best_key = (best.ema_fast, best.ema_slow, best.rsi_period, best.atr_period, best.donchian_period)
+    best_x_fit = indicator_cache.get(best_key)
+    if best_x_fit is None:
+        best_x_fit = indicators(fit, best)
+    fit_m = metrics([t.r for t in _run_backtest_indicators(best_x_fit, best, spread=selection_spread)])
     tune_m = metrics([t.r for t in run_backtest(tune, best, spread=selection_spread)])
     return best, {
         "candidate_count": len(candidates),
