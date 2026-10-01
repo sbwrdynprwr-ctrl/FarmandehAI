@@ -247,12 +247,14 @@ def independent_holdout(df: pd.DataFrame, holdout_ratio: float = 0.20):
         raise ValueError("dataset is too small for independent holdout")
     results = {}
     for hypothesis in ("trend", "mean_reversion", "breakout", "pullback"):
+        print(f"FORWARD_HOLDOUT_HYPOTHESIS_START={hypothesis}", flush=True)
         selected, selection = select_params(
             df.iloc[:holdout_start].reset_index(drop=True),
             hypothesis=hypothesis,
         )
         trades = run_backtest_window(df, selected, holdout_start, n)
         holdout_metrics = metrics([t.r for t in trades])
+        print(f"FORWARD_HOLDOUT_HYPOTHESIS_COMPLETE={hypothesis} trades={holdout_metrics['trades']} total_r={holdout_metrics['total_r']}", flush=True)
         results[hypothesis] = {
             "holdout_start": holdout_start,
             "holdout_rows": n - holdout_start,
