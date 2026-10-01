@@ -84,7 +84,7 @@ def _run_backtest_indicators(x: pd.DataFrame, params=StrategyParams(),
 
     Signal/entry/SL/TP semantics are unchanged. Same-bar SL+TP resolves to SL.
     """
-    if not df["timestamp"].is_monotonic_increasing:
+    if not x["timestamp"].is_monotonic_increasing:
         raise ValueError("Backtest requires chronological data")
     n = len(x)
     start = 1 if start_index is None else max(1, int(start_index))
