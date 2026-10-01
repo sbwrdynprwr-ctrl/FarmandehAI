@@ -61,7 +61,7 @@ def main():
         print("INDEPENDENT_HOLDOUT_DONE", flush=True)
         return
 
-    baseline = StrategyParams(hypothesis="trend")
+    # Focused validation mode for the Railway research service.\n    # The service currently passes --research; use that invocation to run\n    # the independent final holdout without contaminating it with OOS tuning.\n    if args.research:\n        holdout = independent_holdout(df, holdout_ratio=0.20)\n        print(f"INDEPENDENT_HOLDOUT_START={int(len(df) * 0.80)} ROWS={len(df) - int(len(df) * 0.80)}", flush=True)\n        for hypothesis, result in holdout.items():\n            print(f"INDEPENDENT_HOLDOUT={hypothesis}:{json.dumps(result, default=str)}", flush=True)\n        print("INDEPENDENT_HOLDOUT_DONE", flush=True)\n        return\n\n    baseline = StrategyParams(hypothesis="trend")
     baseline_trades = run_backtest(df, baseline)
     bm = metrics([t.r for t in baseline_trades])
     wf, wfm = walk_forward(df, baseline, args.folds)
