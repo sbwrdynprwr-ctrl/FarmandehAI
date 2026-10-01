@@ -12,4 +12,4 @@ ENV REAL=False
 ENV NO_LOOKAHEAD=True
 ENV CLOSED_ONLY=True
 
-CMD ["python", "-u", "main.py", "--days", "60", "--folds", "4", "--research", "--serve"]
+CMD ["python", "-u", "holdout_runner.py"]
