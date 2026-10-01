@@ -1,5 +1,5 @@
 from __future__ import annotations
-from backtest.engine import run_backtest
+from backtest.engine import run_backtest, run_backtest_window
 from backtest.metrics import metrics
 from strategy.strategy import StrategyParams
 
@@ -22,7 +22,10 @@ def walk_forward(df, params, folds=4, train_ratio=0.5):
         train = df.iloc[:oos_start].reset_index(drop=True)
         oos = df.iloc[oos_start:oos_end].reset_index(drop=True)
         train_trades = run_backtest(train, params)
-        oos_trades = run_backtest(oos, params)
+        # Keep the full history available for indicator warm-up, but restrict
+        # entries/exits to the OOS window. This avoids artificial warm-up gaps
+        # while preserving strict chronological OOS evaluation.
+        oos_trades = run_backtest_window(df, params, oos_start, oos_end)
         results.append({
             "fold": k + 1,
             "train_rows": len(train),
