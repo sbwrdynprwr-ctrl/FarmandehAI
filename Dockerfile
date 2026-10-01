@@ -6,10 +6,12 @@ RUN pip install --no-cache-dir -r requirements.txt
 COPY . .
 
 ENV PYTHONUNBUFFERED=1
+ENV PYTHONDONTWRITEBYTECODE=1
 ENV PAPER=True
 ENV LIVE=False
 ENV REAL=False
 ENV NO_LOOKAHEAD=True
 ENV CLOSED_ONLY=True
 
-CMD ["python", "-u", "holdout_runner.py"]
+ENTRYPOINT ["python", "-u"]
+CMD ["holdout_runner.py"]
