@@ -57,6 +57,6 @@ def test_safety_accepts_paper_only(monkeypatch):
 def test_validation_marker_is_required(tmp_path, monkeypatch):
     monkeypatch.chdir(tmp_path)
     chain = AutomationChain(retries=0)
-    Path("artifacts").mkdir()
+    Path("artifacts").mkdir(parents=True, exist_ok=True)
     with pytest.raises(RuntimeError, match="validation marker missing"):
         chain.run_stage("paper_gate", lambda: f"paper-only gate recorded: approved={chain._read_validation_marker().get('approved', [])}")
