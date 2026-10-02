@@ -3,7 +3,7 @@ from pathlib import Path
 
 import pytest
 
-from orchestrator import AutomationChain
+from orchestrator import AutomationChain, check_safety
 
 
 def test_stage_chain_stops_after_failure(tmp_path, monkeypatch):
