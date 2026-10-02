@@ -22,8 +22,7 @@ try:
         print(f"FORWARD_HOLDOUT={hypothesis}:{json.dumps(result, default=str)}", flush=True)
     print("FARMANDEHAI_FORWARD_HOLDOUT_DONE", flush=True)
 
-    # Independent walk-forward robustness study. Each fold selects parameters
-    # only from data available before that fold's OOS segment.
+    validation = {}
     for hypothesis in ("trend_filtered", "trend", "trend_regime", "mean_reversion_v2", "mean_reversion_v3", "mean_reversion", "breakout", "pullback"):
         print(f"ROBUSTNESS_WF_START={hypothesis}", flush=True)
         started = time.time()
@@ -39,8 +38,39 @@ try:
             f"{json.dumps({'combined_oos': combined, 'folds': [{'fold': x['fold'], 'trades': x['oos_metrics']['trades'], 'total_r': x['oos_metrics']['total_r'], 'expectancy': x['oos_metrics']['expectancy'], 'profit_factor': x['oos_metrics']['profit_factor']} for x in folds], 'robustness': rb, 'monte_carlo': mc}, default=str)}",
             flush=True,
         )
+        validation[hypothesis] = {"combined": combined, "robustness": rb, "monte_carlo": mc}
         print(f"ROBUSTNESS_WF_DONE={hypothesis} SECONDS={time.time() - started:.1f}", flush=True)
 
+    approved = []
+    for hypothesis, report in validation.items():
+        combined = report["combined"]
+        folds = report["robustness"].get("folds", [])
+        positive_folds = sum(1 for x in folds if x["selected_oos"]["total_r"] > 0)
+        neighbor_rates = [x["neighbor_positive_rate"] for x in folds if x["neighbor_count"]]
+        spread_5bps = sum(
+            x["metrics"]["total_r"]
+            for x in report["robustness"].get("spread_sensitivity", [])
+            if x["spread"] == 0.00005
+        )
+        terminal_r = report["monte_carlo"].get("terminal_r", 0.0)
+        gate = (
+            combined.get("trades", 0) >= 100
+            and combined.get("total_r", 0.0) > 0.0
+            and combined.get("expectancy", 0.0) > 0.0
+            and positive_folds >= 3
+            and (min(neighbor_rates) if neighbor_rates else 0.0) >= 0.50
+            and spread_5bps > 0.0
+            and terminal_r > 0.0
+        )
+        validation[hypothesis]["gate_pass"] = gate
+        if gate:
+            approved.append(hypothesis)
+
+    print(
+        "FARMANDEHAI_VALIDATION="
+        + json.dumps({"approved": approved, "live_enabled": False, "real_enabled": False}),
+        flush=True,
+    )
     print("FARMANDEHAI_ROBUSTNESS_DONE", flush=True)
 except BaseException as exc:
     print(f"FARMANDEHAI_ROBUSTNESS_ERROR={type(exc).__name__}:{exc}", flush=True)
