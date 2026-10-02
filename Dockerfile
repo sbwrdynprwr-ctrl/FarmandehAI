@@ -14,4 +14,4 @@ ENV NO_LOOKAHEAD=True
 ENV CLOSED_ONLY=True
 
 ENTRYPOINT ["python", "-u"]
-CMD ["holdout_runner.py"]
+CMD ["orchestrator.py"]
