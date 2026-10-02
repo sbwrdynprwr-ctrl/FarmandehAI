@@ -14,6 +14,9 @@ class StrategyParams:
     body_min: float = 0.55
     hypothesis: str = "trend"
     donchian_period: int = 20
+    trend_strength: float = 0.20
+    rsi_low: float = 52.0
+    rsi_high: float = 68.0
 
 def indicators(df: pd.DataFrame, p: StrategyParams) -> pd.DataFrame:
     x = df.copy()
@@ -38,9 +41,10 @@ def indicators(df: pd.DataFrame, p: StrategyParams) -> pd.DataFrame:
     x["bb_mid"] = bb_mid
     x["bb_upper"] = bb_mid + 2.0 * bb_std
     x["bb_lower"] = bb_mid - 2.0 * bb_std
-    # Shifted Donchian bands ensure the signal only uses completed prior candles.
     x["donchian_upper"] = high.rolling(p.donchian_period).max().shift(1)
     x["donchian_lower"] = low.rolling(p.donchian_period).min().shift(1)
+    x["ema_slope"] = x["ema_fast"] - x["ema_fast"].shift(3)
+    x["trend_gap_atr"] = (x["ema_fast"] - x["ema_slow"]).abs() / x["atr"].replace(0, np.nan)
     return x
 
 def signal_at(x: pd.DataFrame, i: int, p: StrategyParams):
@@ -48,6 +52,8 @@ def signal_at(x: pd.DataFrame, i: int, p: StrategyParams):
         min_history = max(p.atr_period, p.donchian_period, 30)
     elif p.hypothesis == "mean_reversion":
         min_history = max(p.rsi_period, p.atr_period, 30)
+    elif p.hypothesis == "trend_filtered":
+        min_history = max(p.ema_slow, p.rsi_period, p.atr_period, 35)
     else:
         min_history = max(p.ema_slow, p.rsi_period, p.atr_period, 30)
     if i < min_history:
@@ -78,6 +84,19 @@ def signal_at(x: pd.DataFrame, i: int, p: StrategyParams):
         if r.ema_fast > r.ema_slow and 40 <= r.rsi <= 50 and r.macd >= r.macd_signal and r.close > r.open:
             return "LONG"
         if r.ema_fast < r.ema_slow and 50 <= r.rsi <= 60 and r.macd <= r.macd_signal and r.close < r.open:
+            return "SHORT"
+        return None
+    if p.hypothesis == "trend_filtered":
+        needed = ["ema_fast", "ema_slow", "ema_slope", "trend_gap_atr", "rsi", "atr", "body_ratio", "macd", "macd_signal"]
+        if not np.isfinite(r[needed].to_numpy(dtype=float)).all() or r.body_ratio < p.body_min:
+            return None
+        if (r.ema_fast > r.ema_slow and r.ema_slope > p.trend_strength * r.atr
+                and r.trend_gap_atr >= p.trend_strength and p.rsi_low <= r.rsi <= p.rsi_high
+                and r.macd > r.macd_signal and r.close > r.open and r.close > r.ema_fast):
+            return "LONG"
+        if (r.ema_fast < r.ema_slow and r.ema_slope < -p.trend_strength * r.atr
+                and r.trend_gap_atr >= p.trend_strength and (100-p.rsi_high) <= r.rsi <= (100-p.rsi_low)
+                and r.macd < r.macd_signal and r.close < r.open and r.close < r.ema_fast):
             return "SHORT"
         return None
     needed = ["ema_fast","ema_slow","rsi","atr","macd","macd_signal","body_ratio"]
