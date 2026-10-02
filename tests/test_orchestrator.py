@@ -34,9 +34,24 @@ def test_stage_chain_stops_after_failure(tmp_path, monkeypatch):
 def test_safety_rejects_live(monkeypatch):
     monkeypatch.setenv("LIVE", "true")
     monkeypatch.setenv("REAL", "false")
-    chain = AutomationChain(retries=0)
-    with pytest.raises(RuntimeError):
-        chain.run_stage("safety", lambda: (_ for _ in ()).throw(RuntimeError("Safety lock: LIVE/REAL must remain disabled")))
+    monkeypatch.setenv("PAPER", "true")
+    with pytest.raises(RuntimeError, match="LIVE/REAL"):
+        check_safety()
+
+
+def test_safety_requires_paper(monkeypatch):
+    monkeypatch.setenv("LIVE", "false")
+    monkeypatch.setenv("REAL", "false")
+    monkeypatch.setenv("PAPER", "false")
+    with pytest.raises(RuntimeError, match="PAPER"):
+        check_safety()
+
+
+def test_safety_accepts_paper_only(monkeypatch):
+    monkeypatch.setenv("LIVE", "false")
+    monkeypatch.setenv("REAL", "false")
+    monkeypatch.setenv("PAPER", "true")
+    assert check_safety() == "PAPER=True LIVE=False REAL=False"
 
 
 def test_validation_marker_is_required(tmp_path, monkeypatch):
