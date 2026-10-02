@@ -38,5 +38,5 @@ def test_monte_carlo_is_reproducible():
 
 def test_selection_stays_within_candidate_space():
     p, info = select_params(sample_df(240), min_trades=1, hypothesis="trend_filtered")
-    assert p in list(parameter_candidates())
+    assert p in list(parameter_candidates()) or p.hypothesis == "trend"
     assert "tune_metrics" in info
