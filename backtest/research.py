@@ -72,6 +72,18 @@ def mean_reversion_v2_candidates():
                              body_min=bm, hypothesis="mean_reversion_v2", rsi_low=rlo, rsi_high=rhi)
 
 
+
+def mean_reversion_v3_candidates():
+    for rp, am, rr, bm, rlo, rhi, gap, dist in itertools.product(
+        (10, 14), (1.25, 1.5), (1.5, 2.0), (0.45, 0.55),
+        (35.0, 40.0, 45.0), (55.0, 60.0, 65.0), (0.50, 0.75, 1.0), (0.25, 0.50, 0.75),
+    ):
+        yield StrategyParams(ema_fast=20, ema_slow=50, rsi_period=rp,
+                             atr_period=14, atr_multiplier=am, rr=rr,
+                             body_min=bm, hypothesis="mean_reversion_v3",
+                             rsi_low=rlo, rsi_high=rhi, regime_gap=gap,
+                             reversion_distance_atr=dist)
+
 def mean_reversion_candidates():
     for rp, am, rr, bm in itertools.product(
         (10, 14), (1.25, 1.5), (1.5, 2.0), (0.45, 0.55),
@@ -119,6 +131,8 @@ def pullback_candidates():
 def _candidates_for(hypothesis):
     if hypothesis == "mean_reversion_v2":
         return list(mean_reversion_v2_candidates())
+    if hypothesis == "mean_reversion_v3":
+        return list(mean_reversion_v3_candidates())
     if hypothesis == "mean_reversion":
         return list(mean_reversion_candidates())
     if hypothesis == "breakout":
@@ -316,7 +330,7 @@ def independent_holdout(df: pd.DataFrame, holdout_ratio: float = 0.20):
     if holdout_start < 100 or n - holdout_start < 50:
         raise ValueError("dataset is too small for independent holdout")
     results = {}
-    for hypothesis in ("trend_filtered", "trend", "trend_regime", "mean_reversion_v2", "mean_reversion", "breakout", "pullback"):
+    for hypothesis in ("trend_filtered", "trend", "trend_regime", "mean_reversion_v2", "mean_reversion_v3", "mean_reversion", "breakout", "pullback"):
         print(f"FORWARD_HOLDOUT_HYPOTHESIS_START={hypothesis}", flush=True)
         selected, selection = select_params(
             df.iloc[:holdout_start].reset_index(drop=True),
