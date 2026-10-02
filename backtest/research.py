@@ -52,14 +52,15 @@ def _stability_score(tune: pd.DataFrame, p: StrategyParams, spread: float = SELE
 
 
 def parameter_candidates():
-    for ef, es, rp, am, rr, bm in itertools.product(
-        (15, 25), (45, 50, 55), (14,), (1.25, 1.5), (1.5, 2.0), (0.45, 0.55),
+    for ef, es, rp, am, rr, bm, strength, rlo, rhi in itertools.product(
+        (15, 20, 25), (45, 50, 55), (14,), (1.25, 1.5), (1.5, 2.0), (0.45, 0.55),
+        (0.15, 0.20, 0.25), (50.0, 52.0, 55.0), (65.0, 68.0, 70.0),
     ):
         if ef >= es:
             continue
         yield StrategyParams(ema_fast=ef, ema_slow=es, rsi_period=rp,
                              atr_period=14, atr_multiplier=am, rr=rr,
-                             body_min=bm, hypothesis="trend")
+                             body_min=bm, hypothesis="trend", trend_strength=strength, rsi_low=rlo, rsi_high=rhi)
 
 
 def mean_reversion_candidates():
