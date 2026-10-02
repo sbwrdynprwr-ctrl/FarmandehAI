@@ -46,14 +46,21 @@ def _signal_array(x, p):
         long_mask=valid&(ef>es)&(rsi>=40)&(rsi<=50)&(macd>=sig)&(cl>op)
         short_mask=valid&(ef<es)&(rsi>=50)&(rsi<=60)&(macd<=sig)&(cl<op)
         mh=max(p.ema_slow,p.rsi_period,p.atr_period,30)
-    elif p.hypothesis == "trend_filtered":
+    elif p.hypothesis in ("trend_filtered", "trend_regime"):
         slope=x["ema_slope"].to_numpy(float)
         gap=x["trend_gap_atr"].to_numpy(float)
         valid &= np.isfinite(slope)&np.isfinite(gap)
         s=p.trend_strength
-        long_mask=valid&(ef>es)&(slope>s*atr)&(gap>=s)&(rsi>=p.rsi_low)&(rsi<=p.rsi_high)&(macd>sig)&(cl>op)&(cl>ef)
-        short_mask=valid&(ef<es)&(slope<-s*atr)&(gap>=s)&(rsi>=(100-p.rsi_high))&(rsi<=(100-p.rsi_low))&(macd<sig)&(cl<op)&(cl<ef)
-        mh=max(p.ema_slow,p.rsi_period,p.atr_period,35)
+        if p.hypothesis == "trend_regime":
+            persistence=x["trend_persistence"].to_numpy(float)
+            valid &= np.isfinite(persistence)
+            long_mask=valid&(ef>es)&(slope>s*atr)&(gap>=p.regime_gap)&(persistence>=0.75)&(rsi>=p.rsi_low)&(rsi<=p.rsi_high)&(macd>sig)&(cl>op)&(cl>ef)
+            short_mask=valid&(ef<es)&(slope<-s*atr)&(gap>=p.regime_gap)&(persistence<=0.25)&(rsi>=(100-p.rsi_high))&(rsi<=(100-p.rsi_low))&(macd<sig)&(cl<op)&(cl<ef)
+            mh=max(p.ema_slow,p.rsi_period,p.atr_period,p.slope_bars+4,35)
+        else:
+            long_mask=valid&(ef>es)&(slope>s*atr)&(gap>=s)&(rsi>=p.rsi_low)&(rsi<=p.rsi_high)&(macd>sig)&(cl>op)&(cl>ef)
+            short_mask=valid&(ef<es)&(slope<-s*atr)&(gap>=s)&(rsi>=(100-p.rsi_high))&(rsi<=(100-p.rsi_low))&(macd<sig)&(cl<op)&(cl<ef)
+            mh=max(p.ema_slow,p.rsi_period,p.atr_period,35)
     else:
         long_mask=valid&(ef>es)&(rsi>=50)&(macd>sig)&(cl>op)
         short_mask=valid&(ef<es)&(rsi<=50)&(macd<sig)&(cl<op)
