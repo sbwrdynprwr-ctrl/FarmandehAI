@@ -16,13 +16,6 @@ pip install -r requirements.txt
 pytest -q
 ```
 
-## Backtest with CSV
-CSV columns: `timestamp,open,high,low,close` and optional `volume`.
-
-```bash
-python main.py --csv path/to/gbpusd_5m.csv
-```
-
 ## TwelveData
 Set `TWELVEDATA_API_KEY` in the environment. Never put it in source code or reports.
 
@@ -38,3 +31,6 @@ The research runtime uses the strategy module committed in the repository. It do
 
 ## Holdout runtime marker
 The current holdout runner is intentionally executed with real/live trading disabled while the independent forward validation is completed.
+
+## Automation checkpoint
+The repository now contains the paper-only orchestrator, persisted validation artifact, safety gate, and automated tests. Railway deployment must run the current `main` commit before this checkpoint is considered active.
