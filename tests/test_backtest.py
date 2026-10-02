@@ -18,7 +18,7 @@ def test_same_bar_sl_and_tp_is_reproducibly_sl_first(monkeypatch):
     fake["atr"] = 0.1
     monkeypatch.setattr(engine, "indicators", lambda data, params: fake)
     monkeypatch.setattr(engine, "_signal_array", lambda x, params: __import__("numpy").array(["", "LONG", ""], dtype=object))
-    trades = run_backtest(df, params=StrategyParams(atr_multiplier=1.0))
+    trades = run_backtest(df, p=StrategyParams(atr_multiplier=1.0))
     assert len(trades) == 1
     assert trades[0].reason == "SL_AND_TP_SAME_BAR_SL_FIRST"
     assert trades[0].exit == trades[0].stop_loss
@@ -33,7 +33,7 @@ def test_spread_is_round_trip_cost(monkeypatch):
     fake["atr"] = 0.1
     monkeypatch.setattr(engine, "indicators", lambda data, params: fake)
     monkeypatch.setattr(engine, "_signal_array", lambda x, params: __import__("numpy").array(["", "LONG", ""], dtype=object))
-    no_spread = run_backtest(df, params=StrategyParams(atr_multiplier=1.0), spread=0.0)
+    no_spread = run_backtest(df, p=StrategyParams(atr_multiplier=1.0), spread=0.0)
     with_spread = run_backtest(df, params=StrategyParams(atr_multiplier=1.0), spread=0.02)
     assert no_spread[0].r == pytest.approx(2.0)
     assert with_spread[0].r < no_spread[0].r
