@@ -82,6 +82,20 @@ def breakout_candidates():
                              donchian_period=dp)
 
 
+def trend_regime_candidates():
+    for ef, es, am, rr, bm, strength, rlo, rhi, gap in itertools.product(
+        (15, 20, 25), (45, 50, 55), (1.25, 1.5), (1.5, 2.0),
+        (0.45, 0.55), (0.15, 0.20, 0.25), (50.0, 52.0), (65.0, 68.0), (0.50, 0.75),
+    ):
+        if ef >= es:
+            continue
+        yield StrategyParams(ema_fast=ef, ema_slow=es, rsi_period=14,
+                             atr_period=14, atr_multiplier=am, rr=rr,
+                             body_min=bm, hypothesis="trend_regime",
+                             trend_strength=strength, rsi_low=rlo, rsi_high=rhi,
+                             slope_bars=3, regime_gap=gap)
+
+
 def pullback_candidates():
     for ef, es, am, rr, bm in itertools.product(
         (15, 20, 25), (45, 50, 55), (1.25, 1.5), (1.5, 2.0), (0.45, 0.55),
@@ -100,6 +114,8 @@ def _candidates_for(hypothesis):
         return list(breakout_candidates())
     if hypothesis == "pullback":
         return list(pullback_candidates())
+    if hypothesis == "trend_regime":
+        return list(trend_regime_candidates())
     return list(parameter_candidates())
 
 
@@ -289,7 +305,7 @@ def independent_holdout(df: pd.DataFrame, holdout_ratio: float = 0.20):
     if holdout_start < 100 or n - holdout_start < 50:
         raise ValueError("dataset is too small for independent holdout")
     results = {}
-    for hypothesis in ("trend_filtered", "trend", "mean_reversion", "breakout", "pullback"):
+    for hypothesis in ("trend_filtered", "trend", "trend_regime", "mean_reversion", "breakout", "pullback"):
         print(f"FORWARD_HOLDOUT_HYPOTHESIS_START={hypothesis}", flush=True)
         selected, selection = select_params(
             df.iloc[:holdout_start].reset_index(drop=True),
