@@ -11,6 +11,7 @@ try:
     from data.loader import DataConfig, fetch_twelvedata
     from backtest.research import independent_holdout, walk_forward_search, robustness, monte_carlo
 
+    print("FARMANDEHAI_FETCH_START", flush=True)
     started = time.time()
     df = fetch_twelvedata(DataConfig(), days=90)
     print(f"DATA_ROWS={len(df)} FETCH_SECONDS={time.time() - started:.1f}", flush=True)
