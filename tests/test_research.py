@@ -26,7 +26,7 @@ def test_parameter_candidates_are_valid_and_include_baseline():
 def test_breakout_candidates_are_valid():
     ps = list(breakout_candidates())
     assert len(ps) == 32
-    assert all(p.hypothesis == "breakout" and p.donchian_period in (15,20,30,40) for p in ps)
+    assert all(p.hypothesis == "breakout" and p.donchian_period in (10,15,20,30) for p in ps)
 
 
 def test_monte_carlo_is_reproducible():
@@ -37,6 +37,6 @@ def test_monte_carlo_is_reproducible():
 
 
 def test_selection_stays_within_candidate_space():
-    p, info = select_params(sample_df(240), min_trades=1)
+    p, info = select_params(sample_df(240), min_trades=1, hypothesis="trend_filtered")
     assert p in list(parameter_candidates())
     assert "tune_metrics" in info
