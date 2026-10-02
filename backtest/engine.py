@@ -87,7 +87,7 @@ class _RangeFirstHit:
 
 def _run_backtest_indicators(x,p=StrategyParams(),initial_equity=10000.0,spread=0.0,start_index=None,end_index=None):
     if not x["timestamp"].is_monotonic_increasing: raise ValueError("Backtest requires chronological data")
-    n=len(x); start=1 if start_index is None else max(1,int(start_index)); stop=n-2 if end_index is None else min(n-2,int(end_index)-1)
+    n=len(x); start=1 if start_index is None else max(1,int(start_index)); stop=n-1 if end_index is None else min(n-1,int(end_index)-1)
     if start>stop: return []
     signals=_signal_array(x,p); op=x["open"].to_numpy(float); hi=x["high"].to_numpy(float); lo=x["low"].to_numpy(float); atr=x["atr"].to_numpy(float); ts=x["timestamp"].to_numpy()
     lt=_RangeFirstHit(lo); ht=_RangeFirstHit(hi); trades=[]; i=start
