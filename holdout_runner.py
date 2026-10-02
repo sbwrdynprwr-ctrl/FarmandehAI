@@ -41,7 +41,7 @@ try:
         )
         print(f"ROBUSTNESS_WF_DONE={hypothesis} SECONDS={time.time() - started:.1f}", flush=True)
 
-    print("FARMANDEHAI_ROBUSTNESS_DONE", flush=True)  # source-sync-2026-10-02
+    print("FARMANDEHAI_ROBUSTNESS_DONE", flush=True)
 except BaseException as exc:
     print(f"FARMANDEHAI_ROBUSTNESS_ERROR={type(exc).__name__}:{exc}", flush=True)
     traceback.print_exc()
