@@ -34,7 +34,7 @@ def test_spread_is_round_trip_cost(monkeypatch):
     monkeypatch.setattr(engine, "indicators", lambda data, params: fake)
     monkeypatch.setattr(engine, "_signal_array", lambda x, params: __import__("numpy").array(["", "LONG", ""], dtype=object))
     no_spread = run_backtest(df, p=StrategyParams(atr_multiplier=1.0), spread=0.0)
-    with_spread = run_backtest(df, params=StrategyParams(atr_multiplier=1.0), spread=0.02)
+    with_spread = run_backtest(df, p=StrategyParams(atr_multiplier=1.0), spread=0.02)
     assert no_spread[0].r == pytest.approx(2.0)
     assert with_spread[0].r < no_spread[0].r
 
