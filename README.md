@@ -34,3 +34,6 @@ The current holdout runner is intentionally executed with real/live trading disa
 
 ## Automation checkpoint
 The repository now contains the paper-only orchestrator, persisted validation artifact, safety gate, and automated tests. Railway deployment must run the current `main` commit before this checkpoint is considered active.
+
+## Railway automation checkpoint
+The latest `main` commit is the intended deployment target; live/real execution remains disabled.
