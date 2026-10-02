@@ -46,7 +46,7 @@ def _signal_array(x, p):
         long_mask=valid&(ef>es)&(rsi>=40)&(rsi<=50)&(macd>=sig)&(cl>op)
         short_mask=valid&(ef<es)&(rsi>=50)&(rsi<=60)&(macd<=sig)&(cl<op)
         mh=max(p.ema_slow,p.rsi_period,p.atr_period,30)
-    else:
+    elif p.hypothesis == "trend_filtered":
         slope=x["ema_slope"].to_numpy(float)
         gap=x["trend_gap_atr"].to_numpy(float)
         valid &= np.isfinite(slope)&np.isfinite(gap)
@@ -54,6 +54,10 @@ def _signal_array(x, p):
         long_mask=valid&(ef>es)&(slope>s*atr)&(gap>=s)&(rsi>=p.rsi_low)&(rsi<=p.rsi_high)&(macd>sig)&(cl>op)&(cl>ef)
         short_mask=valid&(ef<es)&(slope<-s*atr)&(gap>=s)&(rsi>=(100-p.rsi_high))&(rsi<=(100-p.rsi_low))&(macd<sig)&(cl<op)&(cl<ef)
         mh=max(p.ema_slow,p.rsi_period,p.atr_period,35)
+    else:
+        long_mask=valid&(ef>es)&(rsi>=50)&(macd>sig)&(cl>op)
+        short_mask=valid&(ef<es)&(rsi<=50)&(macd<sig)&(cl<op)
+        mh=max(p.ema_slow,p.rsi_period,p.atr_period,30)
     long_mask[:mh]=False
     short_mask[:mh]=False
     out[long_mask]="LONG"; out[short_mask]="SHORT"
