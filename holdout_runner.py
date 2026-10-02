@@ -68,11 +68,7 @@ try:
         if gate:
             approved.append(hypothesis)
 
-    print(
-        "FARMANDEHAI_VALIDATION="
-        + json.dumps({"approved": approved, "live_enabled": False, "real_enabled": False}),
-        flush=True,
-    )
+    validation_payload = {"approved": approved, "live_enabled": False, "real_enabled": False}\n    with open("artifacts/validation.json", "w", encoding="utf-8") as fp:\n        json.dump(validation_payload, fp, indent=2)\n    print("FARMANDEHAI_VALIDATION=" + json.dumps(validation_payload), flush=True)
     print("FARMANDEHAI_ROBUSTNESS_DONE", flush=True)
 except BaseException as exc:
     print(f"FARMANDEHAI_ROBUSTNESS_ERROR={type(exc).__name__}:{exc}", flush=True)
