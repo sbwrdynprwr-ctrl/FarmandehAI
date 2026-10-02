@@ -4,7 +4,7 @@ import time
 import traceback
 
 print("FARMANDEHAI_BOOT=python_started", flush=True)
-print("FARMANDEHAI_BUILD=post-0521-robustness", flush=True)
+print("FARMANDEHAI_BUILD=post-1002-180d-validation", flush=True)
 print(f"FARMANDEHAI_ENV=PAPER:{os.getenv('PAPER')} LIVE:{os.getenv('LIVE')} REAL:{os.getenv('REAL')}", flush=True)
 
 try:
@@ -13,7 +13,9 @@ try:
 
     print("FARMANDEHAI_FETCH_START", flush=True)
     started = time.time()
-    df = fetch_twelvedata(DataConfig(), days=90)
+    research_days = int(os.getenv("RESEARCH_DAYS", "180"))
+    print(f"FARMANDEHAI_RESEARCH_DAYS={research_days}", flush=True)
+    df = fetch_twelvedata(DataConfig(), days=research_days)
     print(f"DATA_ROWS={len(df)} FETCH_SECONDS={time.time() - started:.1f}", flush=True)
 
     holdout_ratio = float(os.getenv("HOLDOUT_RATIO", "0.10"))
