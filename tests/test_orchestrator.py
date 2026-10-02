@@ -58,5 +58,5 @@ def test_validation_marker_is_required(tmp_path, monkeypatch):
     monkeypatch.chdir(tmp_path)
     chain = AutomationChain(retries=0)
     Path("artifacts").mkdir(parents=True, exist_ok=True)
-    with pytest.raises(RuntimeError, match="validation marker missing"):
+    with pytest.raises(RuntimeError, match="validation.json was not produced"):
         chain.run_stage("paper_gate", lambda: f"paper-only gate recorded: approved={chain._read_validation_marker().get('approved', [])}")
