@@ -28,7 +28,7 @@ def test_same_bar_sl_and_tp_is_reproducibly_sl_first(monkeypatch):
 
 
 def test_spread_is_round_trip_cost(monkeypatch):
-    df = pd.DataFrame({"timestamp": pd.to_datetime(["2026-01-01 00:00","2026-01-01 00:05","2026-01-01 00:10"]), "open": [1.0,1.0,1.0], "high": [1.0,1.0,1.3], "low": [1.0,1.0,0.9], "close": [1.0,1.0,1.0]})
+    df = pd.DataFrame({"timestamp": pd.to_datetime(["2026-01-01 00:00","2026-01-01 00:05","2026-01-01 00:10"]), "open": [1.0,1.0,1.0], "high": [1.0,1.0,1.3], "low": [1.0,1.0,1.1], "close": [1.0,1.0,1.0]})
     fake = df.copy()
     fake["atr"] = 0.1
     monkeypatch.setattr(engine, "indicators", lambda data, params: fake)
