@@ -24,7 +24,7 @@ try:
 
     # Independent walk-forward robustness study. Each fold selects parameters
     # only from data available before that fold's OOS segment.
-    for hypothesis in ("trend_filtered", "trend", "mean_reversion", "breakout", "pullback"):
+    for hypothesis in ("trend_filtered", "trend", "trend_regime", "mean_reversion", "breakout", "pullback"):
         print(f"ROBUSTNESS_WF_START={hypothesis}", flush=True)
         started = time.time()
         folds, combined = walk_forward_search(df, folds=4, train_ratio=0.5, hypothesis=hypothesis)
