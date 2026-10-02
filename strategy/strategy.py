@@ -17,6 +17,8 @@ class StrategyParams:
     trend_strength: float = 0.20
     rsi_low: float = 52.0
     rsi_high: float = 68.0
+    slope_bars: int = 3
+    regime_gap: float = 0.50
 
 def indicators(df: pd.DataFrame, p: StrategyParams) -> pd.DataFrame:
     x = df.copy()
@@ -43,7 +45,8 @@ def indicators(df: pd.DataFrame, p: StrategyParams) -> pd.DataFrame:
     x["bb_lower"] = bb_mid - 2.0 * bb_std
     x["donchian_upper"] = high.rolling(p.donchian_period).max().shift(1)
     x["donchian_lower"] = low.rolling(p.donchian_period).min().shift(1)
-    x["ema_slope"] = x["ema_fast"] - x["ema_fast"].shift(3)
+    x["ema_slope"] = x["ema_fast"] - x["ema_fast"].shift(p.slope_bars)
+    x["trend_persistence"] = (x["ema_fast"] > x["ema_slow"]).rolling(4).mean()
     x["trend_gap_atr"] = (x["ema_fast"] - x["ema_slow"]).abs() / x["atr"].replace(0, np.nan)
     return x
 
@@ -52,8 +55,8 @@ def signal_at(x: pd.DataFrame, i: int, p: StrategyParams):
         min_history = max(p.atr_period, p.donchian_period, 30)
     elif p.hypothesis == "mean_reversion":
         min_history = max(p.rsi_period, p.atr_period, 30)
-    elif p.hypothesis == "trend_filtered":
-        min_history = max(p.ema_slow, p.rsi_period, p.atr_period, 35)
+    elif p.hypothesis in ("trend_filtered", "trend_regime"):
+        min_history = max(p.ema_slow, p.rsi_period, p.atr_period, p.slope_bars + 4, 35)
     else:
         min_history = max(p.ema_slow, p.rsi_period, p.atr_period, 30)
     if i < min_history:
@@ -84,6 +87,21 @@ def signal_at(x: pd.DataFrame, i: int, p: StrategyParams):
         if r.ema_fast > r.ema_slow and 40 <= r.rsi <= 50 and r.macd >= r.macd_signal and r.close > r.open:
             return "LONG"
         if r.ema_fast < r.ema_slow and 50 <= r.rsi <= 60 and r.macd <= r.macd_signal and r.close < r.open:
+            return "SHORT"
+        return None
+    if p.hypothesis == "trend_regime":
+        needed = ["ema_fast", "ema_slow", "ema_slope", "trend_gap_atr", "trend_persistence", "rsi", "atr", "body_ratio", "macd", "macd_signal"]
+        if not np.isfinite(r[needed].to_numpy(dtype=float)).all() or r.body_ratio < p.body_min:
+            return None
+        if (r.ema_fast > r.ema_slow and r.ema_slope > p.trend_strength * r.atr
+                and r.trend_gap_atr >= p.regime_gap and r.trend_persistence >= 0.75
+                and p.rsi_low <= r.rsi <= p.rsi_high and r.macd > r.macd_signal
+                and r.close > r.open and r.close > r.ema_fast):
+            return "LONG"
+        if (r.ema_fast < r.ema_slow and r.ema_slope < -p.trend_strength * r.atr
+                and r.trend_gap_atr >= p.regime_gap and r.trend_persistence <= 0.25
+                and (100-p.rsi_high) <= r.rsi <= (100-p.rsi_low) and r.macd < r.macd_signal
+                and r.close < r.open and r.close < r.ema_fast):
             return "SHORT"
         return None
     if p.hypothesis == "trend_filtered":
