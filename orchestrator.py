@@ -22,6 +22,15 @@ def _bool(name: str, default: bool) -> bool:
     return value.strip().lower() in {"1", "true", "yes", "on"}
 
 
+def check_safety() -> str:
+    """Hard paper-trading safety gate used by the automation chain."""
+    if _bool("LIVE", False) or _bool("REAL", False):
+        raise RuntimeError("Safety lock: LIVE/REAL must remain disabled")
+    if not _bool("PAPER", True):
+        raise RuntimeError("Safety lock: PAPER must remain enabled")
+    return "PAPER=True LIVE=False REAL=False"
+
+
 @dataclass
 class StageResult:
     name: str
@@ -93,13 +102,6 @@ class AutomationChain:
     def run(self) -> int:
         self._write_state()
 
-        def safety():
-            if _bool("LIVE", False) or _bool("REAL", False):
-                raise RuntimeError("Safety lock: LIVE/REAL must remain disabled")
-            if not _bool("PAPER", True):
-                raise RuntimeError("Safety lock: PAPER must remain enabled")
-            return "PAPER=True LIVE=False REAL=False"
-
         def tests():
             proc = subprocess.run(
                 [sys.executable, "-m", "pytest", "-q"],
@@ -128,7 +130,7 @@ class AutomationChain:
                 raise RuntimeError("validation marker missing")
             return f"paper-only gate recorded: approved={validation_state.get('approved', [])}"
 
-        self.run_stage("safety", safety)
+        self.run_stage("safety", check_safety)
         self.run_stage("tests", tests)
         self.run_stage("validation", validation)
         self.run_stage("paper_gate", paper_gate)
