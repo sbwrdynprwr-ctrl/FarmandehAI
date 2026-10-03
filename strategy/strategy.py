@@ -20,6 +20,7 @@ class StrategyParams:
     slope_bars: int = 3
     regime_gap: float = 0.50
     reversion_distance_atr: float = 0.50
+    min_target_distance_atr: float = 0.0
 
 def indicators(df: pd.DataFrame, p: StrategyParams) -> pd.DataFrame:
     x = df.copy()
