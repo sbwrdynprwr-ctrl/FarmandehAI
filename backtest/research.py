@@ -51,7 +51,7 @@ def _stability_score(tune: pd.DataFrame, p: StrategyParams, spread: float = SELE
     return (mean_exp, min_exp, mean_pf, positive_slices, total_trades), slice_metrics
 
 
-def parameter_candidates():
+def parameter_candidates(hypothesis: str = "trend_filtered"):
     for ef, es, rp, am, rr, bm, strength, rlo, rhi in itertools.product(
         (15, 20, 25), (45, 50, 55), (14,), (1.25, 1.5), (1.5, 2.0), (0.45, 0.55),
         (0.15, 0.20, 0.25), (50.0, 52.0), (65.0, 68.0),
@@ -60,7 +60,7 @@ def parameter_candidates():
             continue
         yield StrategyParams(ema_fast=ef, ema_slow=es, rsi_period=rp,
                              atr_period=14, atr_multiplier=am, rr=rr,
-                             body_min=bm, hypothesis="trend_filtered", trend_strength=strength, rsi_low=rlo, rsi_high=rhi)
+                             body_min=bm, hypothesis=hypothesis, trend_strength=strength, rsi_low=rlo, rsi_high=rhi)
 
 
 def mean_reversion_v2_candidates():
@@ -141,7 +141,7 @@ def _candidates_for(hypothesis):
         return list(pullback_candidates())
     if hypothesis == "trend_regime":
         return list(trend_regime_candidates())
-    return list(parameter_candidates())
+    return list(parameter_candidates(hypothesis))
 
 
 def select_params(
