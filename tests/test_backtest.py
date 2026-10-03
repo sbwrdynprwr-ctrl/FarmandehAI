@@ -71,7 +71,7 @@ def test_costaware_mean_reversion_requires_range_and_distance(monkeypatch):
     fake["bb_upper"] = 1.2
     fake["bb_lower"] = 0.9
     fake["trend_gap_atr"] = 0.3
-    fake.loc[35, "open"] = 1.0
+    fake.loc[35, "open"] = 0.85
     fake.loc[35, "close"] = 0.9
     monkeypatch.setattr(engine, "indicators", lambda data, params: fake)
     params = StrategyParams(
