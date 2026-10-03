@@ -92,6 +92,21 @@ def mean_reversion_rr_candidates():
                              rsi_low=rlo, rsi_high=rhi)
 
 
+def mean_reversion_costaware_candidates():
+    # Conservative reversal branch: avoid strong trends, require a meaningful
+    # excursion from the mean, and select parameters against a 10bps training
+    # cost so the final 5bps gate is not the first cost-aware test.
+    for rp, am, rr, bm, rlo, rhi, gap, dist in itertools.product(
+        (10, 14), (1.5, 2.0), (1.5, 2.0, 2.5), (0.45, 0.55),
+        (35.0, 40.0), (60.0, 65.0), (0.50, 0.75), (0.50, 0.75),
+    ):
+        yield StrategyParams(ema_fast=20, ema_slow=50, rsi_period=rp,
+                             atr_period=14, atr_multiplier=am, rr=rr,
+                             body_min=bm, hypothesis="mean_reversion_costaware",
+                             rsi_low=rlo, rsi_high=rhi, regime_gap=gap,
+                             reversion_distance_atr=dist)
+
+
 def mean_reversion_v3_candidates():
     for rp, am, rr, bm, rlo, rhi, gap, dist in itertools.product(
         (10, 14), (1.25, 1.5), (1.5, 2.0), (0.45, 0.55),
@@ -152,6 +167,8 @@ def _candidates_for(hypothesis):
         return list(mean_reversion_v2_candidates())
     if hypothesis == "mean_reversion_rr":
         return list(mean_reversion_rr_candidates())
+    if hypothesis == "mean_reversion_costaware":
+        return list(mean_reversion_costaware_candidates())
     if hypothesis == "mean_reversion_v3":
         return list(mean_reversion_v3_candidates())
     if hypothesis == "mean_reversion":
@@ -261,7 +278,7 @@ def walk_forward_search(df: pd.DataFrame, folds: int = 4, train_ratio: float = 0
         oos_end = first_oos + (k + 1) * oos_size if k < folds - 1 else n
         train = df.iloc[:oos_start].reset_index(drop=True)
         oos = df.iloc[oos_start:oos_end].reset_index(drop=True)
-        selected, selection = select_params(train, hypothesis=hypothesis)
+        selected, selection = select_params(train, hypothesis=hypothesis, selection_spread=(0.00010 if hypothesis == "mean_reversion_costaware" else SELECTION_SPREAD))
         oos_trades = run_backtest_window(df, selected, oos_start, oos_end)
         oos_m = metrics([t.r for t in oos_trades])
         baseline_trades = run_backtest_window(df, StrategyParams(hypothesis=hypothesis), oos_start, oos_end)
@@ -356,6 +373,7 @@ def independent_holdout(df: pd.DataFrame, holdout_ratio: float = 0.20):
         selected, selection = select_params(
             df.iloc[:holdout_start].reset_index(drop=True),
             hypothesis=hypothesis,
+            selection_spread=(0.00010 if hypothesis == "mean_reversion_costaware" else SELECTION_SPREAD),
         )
         trades = run_backtest_window(df, selected, holdout_start, n)
         holdout_metrics = metrics([t.r for t in trades])
