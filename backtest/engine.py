@@ -30,11 +30,11 @@ def _signal_array(x, p):
     cl = x["close"].to_numpy(float)
     valid = np.isfinite(ef)&np.isfinite(es)&np.isfinite(rsi)&np.isfinite(atr)&np.isfinite(body)&np.isfinite(macd)&np.isfinite(sig)
     valid &= body >= p.body_min
-    if p.hypothesis in ("mean_reversion", "mean_reversion_v2", "mean_reversion_v3"):
+    if p.hypothesis in ("mean_reversion", "mean_reversion_v2", "mean_reversion_v3", "mean_reversion_rr"):
         up=x["bb_upper"].to_numpy(float); lo=x["bb_lower"].to_numpy(float)
         mid=x["bb_mid"].to_numpy(float)
         valid &= np.isfinite(mid)
-        if p.hypothesis == "mean_reversion_v2":
+        if p.hypothesis in ("mean_reversion_v2", "mean_reversion_rr"):
             long_mask=valid&(cl<mid)&(rsi<=p.rsi_low)&(cl>op)
             short_mask=valid&(cl>mid)&(rsi>=p.rsi_high)&(cl<op)
             mh=max(p.rsi_period,p.atr_period,30)
