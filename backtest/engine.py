@@ -116,6 +116,7 @@ def _run_backtest_indicators(x,p=StrategyParams(),initial_equity=10000.0,spread=
             if p.hypothesis=="mean_reversion_v2":
                 tp=float(bb_mid[i])
                 if not np.isfinite(tp) or tp <= entry + spread/2: i+=1; continue
+                if p.min_target_distance_atr > 0 and (tp - entry) / risk < p.min_target_distance_atr: i+=1; continue
             else:
                 tp=entry+risk*p.rr
             si=lt.first_le(i+1,stop,sl); ti=ht.first_ge(i+1,stop,tp)
@@ -124,6 +125,7 @@ def _run_backtest_indicators(x,p=StrategyParams(),initial_equity=10000.0,spread=
             if p.hypothesis=="mean_reversion_v2":
                 tp=float(bb_mid[i])
                 if not np.isfinite(tp) or tp >= entry - spread/2: i+=1; continue
+                if p.min_target_distance_atr > 0 and (entry - tp) / risk < p.min_target_distance_atr: i+=1; continue
             else:
                 tp=entry-risk*p.rr
             si=ht.first_ge(i+1,stop,sl); ti=lt.first_le(i+1,stop,tp)
