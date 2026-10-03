@@ -64,12 +64,17 @@ def parameter_candidates(hypothesis: str = "trend_filtered"):
 
 
 def mean_reversion_v2_candidates():
-    for rp, am, rr, bm, rlo, rhi in itertools.product(
-        (10, 14), (1.25, 1.5), (1.5, 2.0), (0.40, 0.50), (40.0, 45.0), (55.0, 60.0),
+    # Execution-aware search: avoid targets so close to entry that realistic
+    # spread can dominate the expected move. Selection remains training-only.
+    for rp, am, bm, rlo, rhi, min_target in itertools.product(
+        (10, 14), (1.0, 1.25, 1.5), (0.40, 0.50),
+        (40.0, 45.0), (55.0, 60.0), (0.50, 0.75, 1.00),
     ):
         yield StrategyParams(ema_fast=20, ema_slow=50, rsi_period=rp,
-                             atr_period=14, atr_multiplier=am, rr=rr,
-                             body_min=bm, hypothesis="mean_reversion_v2", rsi_low=rlo, rsi_high=rhi)
+                             atr_period=14, atr_multiplier=am, rr=2.0,
+                             body_min=bm, hypothesis="mean_reversion_v2",
+                             rsi_low=rlo, rsi_high=rhi,
+                             min_target_distance_atr=min_target)
 
 
 
