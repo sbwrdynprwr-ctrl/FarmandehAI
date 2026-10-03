@@ -25,7 +25,7 @@ try:
     print("FARMANDEHAI_FORWARD_HOLDOUT_DONE", flush=True)
 
     validation = {}
-    for hypothesis in ("trend_filtered", "trend", "trend_regime", "mean_reversion_v2", "mean_reversion_v3", "mean_reversion", "breakout", "pullback"):
+    for hypothesis in ("trend_filtered", "trend", "trend_regime", "mean_reversion_v2", "mean_reversion_rr", "mean_reversion_v3", "mean_reversion", "breakout", "pullback"):
         print(f"ROBUSTNESS_WF_START={hypothesis}", flush=True)
         started = time.time()
         folds, combined = walk_forward_search(df, folds=4, train_ratio=0.5, hypothesis=hypothesis)
