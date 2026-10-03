@@ -104,7 +104,7 @@ def _run_backtest_indicators(x,p=StrategyParams(),initial_equity=10000.0,spread=
     if not x["timestamp"].is_monotonic_increasing: raise ValueError("Backtest requires chronological data")
     n=len(x); start=1 if start_index is None else max(1,int(start_index)); last_signal=n-2 if end_index is None else min(n-2,int(end_index)-2); stop=n-1 if end_index is None else min(n-1,int(end_index)-1)
     if start>last_signal: return []
-    signals=_signal_array(x,p); op=x["open"].to_numpy(float); hi=x["high"].to_numpy(float); lo=x["low"].to_numpy(float); atr=x["atr"].to_numpy(float); ts=x["timestamp"].to_numpy()
+    signals=_signal_array(x,p); op=x["open"].to_numpy(float); hi=x["high"].to_numpy(float); lo=x["low"].to_numpy(float); atr=x["atr"].to_numpy(float); ts=x["timestamp"].to_numpy(); bb_mid=x["bb_mid"].to_numpy(float) if "bb_mid" in x else np.full(n,np.nan)
     lt=_RangeFirstHit(lo); ht=_RangeFirstHit(hi); trades=[]; i=start
     while i<=last_signal:
         side=signals[i]
@@ -112,9 +112,21 @@ def _run_backtest_indicators(x,p=StrategyParams(),initial_equity=10000.0,spread=
         entry=float(op[i+1]); risk=p.atr_multiplier*float(atr[i])
         if not np.isfinite(risk) or risk<=0: i+=1; continue
         if side=="LONG":
-            entry+=spread/2; sl=entry-risk; tp=entry+risk*p.rr; si=lt.first_le(i+1,stop,sl); ti=ht.first_ge(i+1,stop,tp)
+            entry+=spread/2; sl=entry-risk
+            if p.hypothesis=="mean_reversion_v2":
+                tp=float(bb_mid[i])
+                if not np.isfinite(tp) or tp <= entry + spread/2: i+=1; continue
+            else:
+                tp=entry+risk*p.rr
+            si=lt.first_le(i+1,stop,sl); ti=ht.first_ge(i+1,stop,tp)
         else:
-            entry-=spread/2; sl=entry+risk; tp=entry-risk*p.rr; si=ht.first_ge(i+1,stop,sl); ti=lt.first_le(i+1,stop,tp)
+            entry-=spread/2; sl=entry+risk
+            if p.hypothesis=="mean_reversion_v2":
+                tp=float(bb_mid[i])
+                if not np.isfinite(tp) or tp >= entry - spread/2: i+=1; continue
+            else:
+                tp=entry-risk*p.rr
+            si=ht.first_ge(i+1,stop,sl); ti=lt.first_le(i+1,stop,tp)
         if si is None and ti is None: break
         if si is None or (ti is not None and ti<si): j=ti; ep=tp; reason="TAKE_PROFIT"
         elif ti is None or si<ti: j=si; ep=sl; reason="STOP_LOSS"
