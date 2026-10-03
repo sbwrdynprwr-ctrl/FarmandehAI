@@ -55,7 +55,7 @@ def indicators(df: pd.DataFrame, p: StrategyParams) -> pd.DataFrame:
 def signal_at(x: pd.DataFrame, i: int, p: StrategyParams):
     if p.hypothesis == "breakout":
         min_history = max(p.atr_period, p.donchian_period, 30)
-    elif p.hypothesis in ("mean_reversion", "mean_reversion_v2", "mean_reversion_v3"):
+    elif p.hypothesis in ("mean_reversion", "mean_reversion_v2", "mean_reversion_v3", "mean_reversion_rr"):
         min_history = max(p.rsi_period, p.atr_period, 30)
     elif p.hypothesis in ("trend_filtered", "trend_regime"):
         min_history = max(p.ema_slow, p.rsi_period, p.atr_period, p.slope_bars + 4, 35)
@@ -76,7 +76,7 @@ def signal_at(x: pd.DataFrame, i: int, p: StrategyParams):
         if r.close > r.bb_mid and r.rsi >= p.rsi_high and r.close < r.open:
             return "SHORT"
         return None
-    if p.hypothesis == "mean_reversion_v2":
+    if p.hypothesis in ("mean_reversion_v2", "mean_reversion_rr"):
         needed = ["rsi", "atr", "body_ratio", "bb_mid", "bb_upper", "bb_lower"]
         if not np.isfinite(r[needed].to_numpy(dtype=float)).all() or r.body_ratio < p.body_min:
             return None
