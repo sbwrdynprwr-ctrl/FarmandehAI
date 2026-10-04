@@ -18,7 +18,7 @@ jobs:
   research:
     if: github.event_name == 'workflow_dispatch' || contains(github.event.head_commit.message, '[run-research]')
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    timeout-minutes: 60
     env:
       PAPER: "true"
       LIVE: "false"
