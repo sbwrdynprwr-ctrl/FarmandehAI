@@ -21,6 +21,7 @@ class StrategyParams:
     regime_gap: float = 0.50
     reversion_distance_atr: float = 0.50
     min_target_distance_atr: float = 0.0
+    confirmation_bars: int = 0
 
 def indicators(df: pd.DataFrame, p: StrategyParams) -> pd.DataFrame:
     x = df.copy()
@@ -50,6 +51,7 @@ def indicators(df: pd.DataFrame, p: StrategyParams) -> pd.DataFrame:
     x["ema_slope"] = x["ema_fast"] - x["ema_fast"].shift(p.slope_bars)
     x["trend_persistence"] = (x["ema_fast"] > x["ema_slow"]).rolling(4).mean()
     x["trend_gap_atr"] = (x["ema_fast"] - x["ema_slow"]).abs() / x["atr"].replace(0, np.nan)
+    x["prev_close"] = close.shift(1)
     return x
 
 def signal_at(x: pd.DataFrame, i: int, p: StrategyParams):
@@ -64,6 +66,18 @@ def signal_at(x: pd.DataFrame, i: int, p: StrategyParams):
     if i < min_history:
         return None
     r = x.iloc[i]
+    if p.hypothesis == "mean_reversion_robust":
+        needed = ["rsi", "atr", "body_ratio", "bb_mid", "trend_gap_atr", "prev_close"]
+        if not np.isfinite(r[needed].to_numpy(dtype=float)).all() or r.body_ratio < p.body_min or r.atr <= 0:
+            return None
+        distance = abs(r.close - r.bb_mid) / r.atr
+        if r.trend_gap_atr > p.regime_gap or distance < p.reversion_distance_atr:
+            return None
+        if r.close < r.bb_mid and r.rsi <= p.rsi_low and r.close > r.open and r.close > r.prev_close:
+            return "LONG"
+        if r.close > r.bb_mid and r.rsi >= p.rsi_high and r.close < r.open and r.close < r.prev_close:
+            return "SHORT"
+        return None
     if p.hypothesis == "mean_reversion_costaware":
         needed = ["rsi", "atr", "body_ratio", "bb_mid", "trend_gap_atr"]
         if not np.isfinite(r[needed].to_numpy(dtype=float)).all() or r.body_ratio < p.body_min or r.atr <= 0:
