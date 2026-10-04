@@ -32,3 +32,19 @@ def test_walk_forward_checkpoint_rejects_stale_shape(tmp_path):
     _save_wf_checkpoint(str(path), payload)
     assert _load_wf_checkpoint(str(path), "mean_reversion_v2", 1001, 4, 0.5) == {}
     assert _load_wf_checkpoint(str(path), "mean_reversion_rr", 1000, 4, 0.5) == {}
+
+def test_walk_forward_checkpoint_rejects_stale_selection_spread(tmp_path):
+    path = tmp_path / "wf.json"
+    payload = {
+        "schema": 4,
+        "hypothesis": "mean_reversion_v2",
+        "df_len": 1000,
+        "folds": 4,
+        "train_ratio": 0.5,
+        "selection_spread": 0.00005,
+        "completed_folds": [],
+    }
+    _save_wf_checkpoint(str(path), payload)
+    assert _load_wf_checkpoint(
+        str(path), "mean_reversion_v2", 1000, 4, 0.5, selection_spread=0.00015
+    ) == {}
