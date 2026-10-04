@@ -88,3 +88,9 @@ def test_mean_reversion_neighbor_screen_is_training_only():
 def test_mean_reversion_v2_has_higher_training_activity_floor():
     source = Path("backtest/research.py").read_text(encoding="utf-8")
     assert 'activity_floor = 20 if hypothesis == "mean_reversion_v2" else min_trades' in source
+
+
+def test_mean_reversion_v2_has_training_neighbor_stability_floor():
+    source = Path("backtest/research.py").read_text(encoding="utf-8")
+    assert 'neighbor_floor = 0.50 if hypothesis == "mean_reversion_v2" else 0.0' in source
+    assert 'neighbor_positive_rate >= neighbor_floor' in source
