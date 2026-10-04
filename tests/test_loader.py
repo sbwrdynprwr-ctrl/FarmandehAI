@@ -1,6 +1,6 @@
 import pandas as pd
 import pytest
-from data.loader import validate_ohlcv
+from data.loader import DataConfig, load_research_data, validate_ohlcv
 
 def test_validate_ohlcv_orders_and_deduplicates():
     df=pd.DataFrame([
@@ -12,3 +12,19 @@ def test_validate_ohlcv_orders_and_deduplicates():
 def test_validate_ohlcv_rejects_bad_ohlc():
     df=pd.DataFrame([{"timestamp":"2026-01-01","open":1,"high":0.9,"low":0.8,"close":1.0}])
     with pytest.raises(ValueError): validate_ohlcv(df)
+
+def test_load_research_data_uses_validated_csv(monkeypatch, tmp_path):
+    path=tmp_path/"history.csv"
+    pd.DataFrame([
+        {"timestamp":"2026-01-01 00:05","open":1.1,"high":1.2,"low":1.0,"close":1.15},
+        {"timestamp":"2026-01-01 00:00","open":1.0,"high":1.1,"low":0.9,"close":1.05},
+    ]).to_csv(path,index=False)
+    monkeypatch.setenv("RESEARCH_DATA_CSV", str(path))
+    out=load_research_data(DataConfig(), days=180)
+    assert len(out)==2
+    assert out.iloc[0]["timestamp"] < out.iloc[1]["timestamp"]
+
+def test_load_research_data_rejects_missing_csv(monkeypatch, tmp_path):
+    monkeypatch.setenv("RESEARCH_DATA_CSV", str(tmp_path/"missing.csv"))
+    with pytest.raises(RuntimeError, match="does not exist"):
+        load_research_data(DataConfig(), days=180)
