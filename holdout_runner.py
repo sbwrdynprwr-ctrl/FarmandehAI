@@ -27,6 +27,7 @@ try:
     checkpoint_dir = os.getenv("FARMANDEHAI_CHECKPOINT_DIR", "artifacts/checkpoints")
     os.makedirs(checkpoint_dir, exist_ok=True)
     validation = {}
+    holdout_report = results
     for hypothesis in ("trend_filtered", "trend", "trend_regime", "mean_reversion_v2", "mean_reversion_rr", "mean_reversion_costaware", "mean_reversion_robust", "mean_reversion_v3", "mean_reversion", "breakout", "pullback"):
         print(f"ROBUSTNESS_WF_START={hypothesis}", flush=True)
         started = time.time()
@@ -72,7 +73,16 @@ try:
         if gate:
             approved.append(hypothesis)
 
-    validation_payload = {"approved": approved, "live_enabled": False, "real_enabled": False}
+    validation_payload = {
+        "build": os.getenv("FARMANDEHAI_BUILD", "unknown"),
+        "research_days": research_days,
+        "holdout_ratio": holdout_ratio,
+        "approved": approved,
+        "live_enabled": False,
+        "real_enabled": False,
+        "holdout": holdout_report,
+        "validation": validation,
+    }
     os.makedirs("artifacts", exist_ok=True)
     with open("artifacts/validation.json", "w", encoding="utf-8") as fp:
         json.dump(validation_payload, fp, indent=2)
