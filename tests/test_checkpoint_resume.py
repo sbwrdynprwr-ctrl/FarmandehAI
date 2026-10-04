@@ -15,7 +15,7 @@ def test_walk_forward_checkpoint_round_trip(tmp_path):
         ],
     }
     _save_wf_checkpoint(str(path), payload)
-    restored = _load_wf_checkpoint(str(path), "mean_reversion_v2", 1000, 4, 0.5)
+    restored = _load_wf_checkpoint(str(path), "mean_reversion_v2", 1000, 4, 0.5, selection_spread=0.00015)
     assert restored == payload
 
 
