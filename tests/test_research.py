@@ -74,6 +74,11 @@ def test_mean_reversion_neighbors_include_strategy_specific_parameters():
 # Research trigger: rerun the full validation suite after robustness-neighbor hardening.
 
 
+def test_oos_neighbor_robustness_uses_five_bps_spread():
+    source = Path("backtest/research.py").read_text(encoding="utf-8")
+    assert 'run_backtest_window(df, q, start, end, spread=SELECTION_SPREAD)' in source
+
+
 def test_mean_reversion_neighbor_screen_is_training_only():
     source = Path("backtest/research.py").read_text(encoding="utf-8")
     assert 'if hypothesis.startswith("mean_reversion"):' in source
