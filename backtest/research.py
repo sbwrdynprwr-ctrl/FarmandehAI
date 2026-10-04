@@ -252,7 +252,17 @@ def select_params(
             fit, p, spread=selection_spread, precomputed=x_fit
         )
         if stability[0] > -900:
-            stable.append((p, fit_m, stability, slice_metrics))
+            # Training-only neighbor robustness. The final approval gate still
+            # recomputes neighbor stability on unseen OOS data at 5bps.
+            neighbor_metrics = []
+            for q in _neighbor_params(p):
+                q_trades = run_backtest(fit, q, spread=selection_spread)
+                neighbor_metrics.append(metrics([t.r for t in q_trades]))
+            neighbor_positive_rate = (
+                sum(m["total_r"] > 0.0 for m in neighbor_metrics) / len(neighbor_metrics)
+                if neighbor_metrics else 0.0
+            )
+            stable.append((p, fit_m, stability, slice_metrics, neighbor_positive_rate))
 
     best = baseline
     best_stability = None
@@ -262,14 +272,14 @@ def select_params(
             # conservative 15bps training cost. The final gate still evaluates
             # 5bps OOS robustness separately, so this cannot leak OOS data.
             robust_ranked = []
-            for p, fit_m, stability, slice_metrics in stable:
+            for p, fit_m, stability, slice_metrics, neighbor_positive_rate in stable:
                 tune_m_candidate = metrics([
                     t.r for t in run_backtest(tune, p, spread=selection_spread)
                 ])
                 positive_slices = stability[3]
                 if tune_m_candidate["trades"] >= min_trades and tune_m_candidate["total_r"] > 0 and positive_slices >= 2:
                     robust_ranked.append(
-                        (p, fit_m, stability, slice_metrics, tune_m_candidate)
+                        (p, fit_m, stability, slice_metrics, tune_m_candidate, neighbor_positive_rate)
                     )
             pool = robust_ranked if robust_ranked else [
                 (*x, metrics([t.r for t in run_backtest(tune, x[0], spread=selection_spread)]))
@@ -277,7 +287,7 @@ def select_params(
             ]
             pool.sort(
                 key=lambda x: (
-                    x[4]["expectancy"], x[2][1], x[2][0], x[2][2],
+                    x[4]["expectancy"], x[5], x[2][1], x[2][0], x[2][2],
                     -x[4]["max_drawdown"], x[4]["trades"]
                 ),
                 reverse=True,
@@ -286,12 +296,12 @@ def select_params(
         else:
             stable.sort(
                 key=lambda x: (
-                    x[2][3], x[2][1], x[2][0], x[2][2],
+                    x[4], x[2][3], x[2][1], x[2][0], x[2][2],
                     -x[1]["max_drawdown"], x[2][4]
                 ),
                 reverse=True,
             )
-            best, _, best_stability, _ = stable[0]
+            best, _, best_stability, _, _ = stable[0]
 
     best_key = (
         best.ema_fast, best.ema_slow, best.rsi_period,
