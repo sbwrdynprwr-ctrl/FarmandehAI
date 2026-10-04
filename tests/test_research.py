@@ -69,3 +69,5 @@ def test_mean_reversion_neighbors_include_strategy_specific_parameters():
     assert any(q.reversion_distance_atr != p.reversion_distance_atr for q in neighbors)
     assert any(q.rsi_low != p.rsi_low for q in neighbors)
     assert any(q.rsi_high != p.rsi_high for q in neighbors)
+
+# Research trigger: rerun the full validation suite after robustness-neighbor hardening.
