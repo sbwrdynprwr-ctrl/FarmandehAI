@@ -24,11 +24,13 @@ try:
         print(f"FORWARD_HOLDOUT={hypothesis}:{json.dumps(result, default=str)}", flush=True)
     print("FARMANDEHAI_FORWARD_HOLDOUT_DONE", flush=True)
 
+    checkpoint_dir = os.getenv("FARMANDEHAI_CHECKPOINT_DIR", "artifacts/checkpoints")
+    os.makedirs(checkpoint_dir, exist_ok=True)
     validation = {}
     for hypothesis in ("trend_filtered", "trend", "trend_regime", "mean_reversion_v2", "mean_reversion_rr", "mean_reversion_costaware", "mean_reversion_v3", "mean_reversion", "breakout", "pullback"):
         print(f"ROBUSTNESS_WF_START={hypothesis}", flush=True)
         started = time.time()
-        folds, combined = walk_forward_search(df, folds=4, train_ratio=0.5, hypothesis=hypothesis)
+        folds, combined = walk_forward_search(df, folds=4, train_ratio=0.5, hypothesis=hypothesis, checkpoint_path=os.path.join(checkpoint_dir, f"wf_{hypothesis}.json"))
         rb = robustness(df, folds)
         mc = monte_carlo(
             [t.r for fold in folds for t in fold["trades"]],
@@ -41,6 +43,8 @@ try:
             flush=True,
         )
         validation[hypothesis] = {"combined": combined, "robustness": rb, "monte_carlo": mc}
+        with open(os.path.join(checkpoint_dir, "validation_partial.json"), "w", encoding="utf-8") as fp:
+            json.dump(validation, fp, default=str)
         print(f"ROBUSTNESS_WF_DONE={hypothesis} SECONDS={time.time() - started:.1f}", flush=True)
 
     approved = []
