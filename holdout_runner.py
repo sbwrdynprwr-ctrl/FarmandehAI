@@ -4,7 +4,7 @@ import time
 import traceback
 
 print("FARMANDEHAI_BOOT=python_started", flush=True)
-print("FARMANDEHAI_BUILD=post-1004-checkpoint-resume", flush=True)
+print("FARMANDEHAI_BUILD=cost-robust-search-v2", flush=True)
 print(f"FARMANDEHAI_ENV=PAPER:{os.getenv('PAPER')} LIVE:{os.getenv('LIVE')} REAL:{os.getenv('REAL')}", flush=True)
 
 try:
