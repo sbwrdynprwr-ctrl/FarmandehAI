@@ -16,6 +16,7 @@ from strategy.strategy import StrategyParams, indicators
 
 
 SELECTION_SPREAD = 0.00005
+ROBUST_SELECTION_SPREAD = 0.00015
 # Keep the expensive chronological stability pass focused on the strongest
 # training candidates. This changes no OOS data usage: all screening remains
 # inside the training window.
@@ -278,15 +279,18 @@ def select_params(
     }
 
 
-def _load_wf_checkpoint(path, hypothesis, df_len, folds, train_ratio):
+def _load_wf_checkpoint(path, hypothesis, df_len, folds, train_ratio, selection_spread=SELECTION_SPREAD):
     if not path or not os.path.exists(path):
         return {}
     try:
         with open(path, "r", encoding="utf-8") as fp:
             payload = json.load(fp)
-        if payload.get("schema") != 1 or payload.get("hypothesis") != hypothesis:
+        if payload.get("schema") != 2 or payload.get("hypothesis") != hypothesis:
             return {}
-        if payload.get("df_len") != df_len or payload.get("folds") != folds or float(payload.get("train_ratio")) != float(train_ratio):
+        if (payload.get("df_len") != df_len
+                or payload.get("folds") != folds
+                or float(payload.get("train_ratio")) != float(train_ratio)
+                or float(payload.get("selection_spread")) != float(selection_spread)):
             return {}
         return payload
     except (OSError, ValueError, TypeError):
@@ -314,7 +318,11 @@ def walk_forward_search(df: pd.DataFrame, folds: int = 4, train_ratio: float = 0
     oos_size = remaining // folds
     if oos_size < 20:
         raise ValueError("OOS fold is too small")
-    checkpoint = _load_wf_checkpoint(checkpoint_path, hypothesis, n, folds, train_ratio)
+    selection_spread = ROBUST_SELECTION_SPREAD if hypothesis == "mean_reversion_robust" else SELECTION_SPREAD
+    checkpoint = _load_wf_checkpoint(
+        checkpoint_path, hypothesis, n, folds, train_ratio,
+        selection_spread=selection_spread,
+    )
     saved_folds = {int(x["fold"]): x for x in checkpoint.get("completed_folds", [])}
     folds_out, combined = [], []
     for k in range(folds):
@@ -330,7 +338,7 @@ def walk_forward_search(df: pd.DataFrame, folds: int = 4, train_ratio: float = 0
             selection = saved["selection"]
             print(f"RESEARCH_FOLD_RESUME={fold_no}/{folds} HYPOTHESIS={hypothesis}", flush=True)
         else:
-            selected, selection = select_params(train, hypothesis=hypothesis, selection_spread=(0.00010 if hypothesis in ("mean_reversion_costaware", "mean_reversion_robust") else SELECTION_SPREAD))
+            selected, selection = select_params(train, hypothesis=hypothesis, selection_spread=(ROBUST_SELECTION_SPREAD if hypothesis == "mean_reversion_robust" else (0.00010 if hypothesis == "mean_reversion_costaware" else SELECTION_SPREAD)))
         oos_trades = run_backtest_window(df, selected, oos_start, oos_end)
         oos_m = metrics([t.r for t in oos_trades])
         baseline_trades = run_backtest_window(df, StrategyParams(hypothesis=hypothesis), oos_start, oos_end)
@@ -343,7 +351,8 @@ def walk_forward_search(df: pd.DataFrame, folds: int = 4, train_ratio: float = 0
         folds_out.append({**fold_record, "trades": oos_trades})
         combined.extend(oos_trades)
         checkpoint_payload = {
-            "schema": 1, "hypothesis": hypothesis, "df_len": n,
+            "schema": 2, "hypothesis": hypothesis, "df_len": n,
+            "selection_spread": selection_spread,
             "folds": folds, "train_ratio": train_ratio,
             "completed_folds": [
                 {k: v for k, v in x.items() if k != "trades"} for x in folds_out
