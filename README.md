@@ -33,7 +33,10 @@ The research runtime uses the strategy module committed in the repository. It do
 The current holdout runner is intentionally executed with real/live trading disabled while the independent forward validation is completed.
 
 ## Automation checkpoint
-The repository now contains the paper-only orchestrator, persisted validation artifact, safety gate, and automated tests. Railway deployment must run the current `main` commit before this checkpoint is considered active.
+The repository contains the paper-only orchestrator, persisted validation artifact, safety gate, checkpoint-resume support, and automated tests.
 
-## Railway automation checkpoint
-The latest `main` commit is the intended deployment target; live/real execution remains disabled.
+## Deployment chain
+The canonical deployment source is `main`. Every push to `main` is covered by GitHub Actions CI, and the Railway service is connected to `main`. A strategy is not considered approved merely because CI passes: independent holdout, walk-forward robustness, spread sensitivity, and Monte Carlo gates must also pass.
+
+## Research gate
+No live/real execution is permitted by the automation chain. The next promotion step after a passing statistical gate is paper-only shadow validation; external AI critics are added only after the statistical baseline is robust.
