@@ -22,6 +22,19 @@ COSTAWARE_SELECTION_SPREAD = 0.00015
 # training candidates. This changes no OOS data usage: all screening remains
 # inside the training window.
 MAX_STABILITY_CANDIDATES = 20
+# Bound the expensive parameter sweep deterministically. The previous full Cartesian
+# grids produced ~7,200 candidates per selection pass, which multiplied across
+# 11 hypotheses, 4 WFO folds, and the independent holdout made the research job
+# computationally unbounded in practice. Keep broad coverage while making each
+# pass finite and repeatable; the final OOS gates remain unchanged.
+MAX_SEARCH_CANDIDATES = 64
+
+
+def _bounded_candidates(candidates):
+    if len(candidates) <= MAX_SEARCH_CANDIDATES:
+        return candidates
+    idx = np.linspace(0, len(candidates) - 1, MAX_SEARCH_CANDIDATES, dtype=int)
+    return [candidates[i] for i in idx]
 
 
 def _score(m):
@@ -210,7 +223,7 @@ def select_params(
     split = max(1, int(len(train) * 0.75))
     fit = train.iloc[:split].reset_index(drop=True)
     tune = train.iloc[split:].reset_index(drop=True)
-    candidates = _candidates_for(hypothesis)
+    candidates = _bounded_candidates(_candidates_for(hypothesis))
     baseline = StrategyParams(hypothesis=hypothesis)
     ranked = []
     indicator_cache = {}
