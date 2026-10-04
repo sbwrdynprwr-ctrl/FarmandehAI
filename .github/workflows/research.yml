@@ -22,35 +22,28 @@ jobs:
       REAL: "false"
       RESEARCH_DAYS: ${{ inputs.research_days }}
       MC_SIMULATIONS: ${{ inputs.mc_simulations }}
-      TWELVEDATA_API_KEY: ${{ secrets.TWELVEDATA_API_KEY }}
+      RESEARCH_DATA_URL: "https://raw.githubusercontent.com/getdata-finance/gbpusd-5m-ohlcv-forex-historical-data/main/GBPUSD_5m.csv"
     steps:
       - uses: actions/checkout@v4
-
       - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
-
       - name: Install dependencies
         run: python -m pip install -r requirements.txt
-
-      - name: Safety and secret preflight
+      - name: Safety preflight
         shell: bash
         run: |
           set -euo pipefail
           test "${PAPER}" = "true"
           test "${LIVE}" = "false"
           test "${REAL}" = "false"
-          test -n "${TWELVEDATA_API_KEY}" || { echo "TWELVEDATA_API_KEY GitHub secret is missing"; exit 1; }
-
+          test -n "${RESEARCH_DATA_URL}"
       - name: Compile
         run: python -m compileall -q .
-
       - name: Tests
         run: python -m pytest -q
-
       - name: Run 180-day research
         run: python -u holdout_runner.py
-
       - name: Upload validation artifacts
         if: always()
         uses: actions/upload-artifact@v4
