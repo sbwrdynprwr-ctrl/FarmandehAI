@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import itertools
 import random
+import json
+import os
 from dataclasses import asdict
 from typing import Iterable
 
@@ -262,7 +264,34 @@ def select_params(
     }
 
 
-def walk_forward_search(df: pd.DataFrame, folds: int = 4, train_ratio: float = 0.5, hypothesis: str = "trend"):
+def _load_wf_checkpoint(path, hypothesis, df_len, folds, train_ratio):
+    if not path or not os.path.exists(path):
+        return {}
+    try:
+        with open(path, "r", encoding="utf-8") as fp:
+            payload = json.load(fp)
+        if payload.get("schema") != 1 or payload.get("hypothesis") != hypothesis:
+            return {}
+        if payload.get("df_len") != df_len or payload.get("folds") != folds or float(payload.get("train_ratio")) != float(train_ratio):
+            return {}
+        return payload
+    except (OSError, ValueError, TypeError):
+        return {}
+
+
+def _save_wf_checkpoint(path, payload):
+    if not path:
+        return
+    os.makedirs(os.path.dirname(path) or ".", exist_ok=True)
+    tmp = path + ".tmp"
+    with open(tmp, "w", encoding="utf-8") as fp:
+        json.dump(payload, fp, indent=2, default=str)
+        fp.flush()
+        os.fsync(fp.fileno())
+    os.replace(tmp, path)
+
+
+def walk_forward_search(df: pd.DataFrame, folds: int = 4, train_ratio: float = 0.5, hypothesis: str = "trend", checkpoint_path: str | None = None):
     if folds < 2:
         raise ValueError("folds must be >= 2")
     n = len(df)
@@ -271,28 +300,44 @@ def walk_forward_search(df: pd.DataFrame, folds: int = 4, train_ratio: float = 0
     oos_size = remaining // folds
     if oos_size < 20:
         raise ValueError("OOS fold is too small")
+    checkpoint = _load_wf_checkpoint(checkpoint_path, hypothesis, n, folds, train_ratio)
+    saved_folds = {int(x["fold"]): x for x in checkpoint.get("completed_folds", [])}
     folds_out, combined = [], []
     for k in range(folds):
-        print(f"RESEARCH_FOLD_START={k + 1}/{folds} HYPOTHESIS={hypothesis}", flush=True)
+        fold_no = k + 1
+        print(f"RESEARCH_FOLD_START={fold_no}/{folds} HYPOTHESIS={hypothesis}", flush=True)
         oos_start = first_oos + k * oos_size
         oos_end = first_oos + (k + 1) * oos_size if k < folds - 1 else n
         train = df.iloc[:oos_start].reset_index(drop=True)
         oos = df.iloc[oos_start:oos_end].reset_index(drop=True)
-        selected, selection = select_params(train, hypothesis=hypothesis, selection_spread=(0.00010 if hypothesis == "mean_reversion_costaware" else SELECTION_SPREAD))
+        saved = saved_folds.get(fold_no)
+        if saved:
+            selected = StrategyParams(**saved["params"])
+            selection = saved["selection"]
+            print(f"RESEARCH_FOLD_RESUME={fold_no}/{folds} HYPOTHESIS={hypothesis}", flush=True)
+        else:
+            selected, selection = select_params(train, hypothesis=hypothesis, selection_spread=(0.00010 if hypothesis == "mean_reversion_costaware" else SELECTION_SPREAD))
         oos_trades = run_backtest_window(df, selected, oos_start, oos_end)
         oos_m = metrics([t.r for t in oos_trades])
         baseline_trades = run_backtest_window(df, StrategyParams(hypothesis=hypothesis), oos_start, oos_end)
         baseline_m = metrics([t.r for t in baseline_trades])
-        folds_out.append({
-            "fold": k + 1, "train_rows": len(train), "oos_rows": len(oos),
+        fold_record = {
+            "fold": fold_no, "train_rows": len(train), "oos_rows": len(oos),
             "params": asdict(selected), "selection": selection,
             "oos_metrics": oos_m, "baseline_oos_metrics": baseline_m,
-            "trades": oos_trades,
-        })
+        }
+        folds_out.append({**fold_record, "trades": oos_trades})
         combined.extend(oos_trades)
-        print(f"RESEARCH_FOLD_COMPLETE={k + 1}/{folds} HYPOTHESIS={hypothesis} trades={oos_m['trades']} total_r={oos_m['total_r']}", flush=True)
+        checkpoint_payload = {
+            "schema": 1, "hypothesis": hypothesis, "df_len": n,
+            "folds": folds, "train_ratio": train_ratio,
+            "completed_folds": [
+                {k: v for k, v in x.items() if k != "trades"} for x in folds_out
+            ],
+        }
+        _save_wf_checkpoint(checkpoint_path, checkpoint_payload)
+        print(f"RESEARCH_FOLD_COMPLETE={fold_no}/{folds} HYPOTHESIS={hypothesis} trades={oos_m['trades']} total_r={oos_m['total_r']}", flush=True)
     return folds_out, metrics([t.r for t in combined])
-
 
 def _neighbor_params(p: StrategyParams):
     variants = []
