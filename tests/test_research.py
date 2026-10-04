@@ -40,7 +40,10 @@ def test_monte_carlo_is_reproducible():
 def test_selection_stays_within_candidate_space():
     p, info = select_params(sample_df(240), min_trades=1, hypothesis="trend_filtered")
     assert p in list(parameter_candidates()) or p.hypothesis == "trend"
-    assert "tune_metrics" in info\n\ndef test_independent_holdout_includes_robust_hypothesis():
+    assert "tune_metrics" in info
+
+
+def test_independent_holdout_includes_robust_hypothesis():
     # Tiny deterministic frame is sufficient to verify hypothesis coverage;
     # parameter search itself is exercised by the existing candidate tests.
     df = sample_df(240)
