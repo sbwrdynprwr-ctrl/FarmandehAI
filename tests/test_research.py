@@ -2,7 +2,8 @@ import pandas as pd
 
 from backtest.research import independent_holdout, robustness
 from backtest.metrics import metrics
-from backtest.research import parameter_candidates, breakout_candidates, select_params, monte_carlo
+from backtest.research import parameter_candidates, breakout_candidates, select_params, monte_carlo, _neighbor_params
+from strategy.strategy import StrategyParams
 
 
 def sample_df(n=240):
@@ -53,3 +54,18 @@ def test_independent_holdout_includes_robust_hypothesis():
         # The production minimum-history/data-size guard is expected here.
         return
     assert "mean_reversion_robust" in result
+
+def test_mean_reversion_neighbors_include_strategy_specific_parameters():
+    p = StrategyParams(
+        hypothesis="mean_reversion_costaware",
+        regime_gap=0.75,
+        reversion_distance_atr=0.75,
+        rsi_low=40.0,
+        rsi_high=60.0,
+    )
+    neighbors = _neighbor_params(p)
+    assert len(neighbors) > 12
+    assert any(q.regime_gap != p.regime_gap for q in neighbors)
+    assert any(q.reversion_distance_atr != p.reversion_distance_atr for q in neighbors)
+    assert any(q.rsi_low != p.rsi_low for q in neighbors)
+    assert any(q.rsi_high != p.rsi_high for q in neighbors)
