@@ -469,7 +469,11 @@ def independent_holdout(df: pd.DataFrame, holdout_ratio: float = 0.20):
         selected, selection = select_params(
             df.iloc[:holdout_start].reset_index(drop=True),
             hypothesis=hypothesis,
-            selection_spread=(COSTAWARE_SELECTION_SPREAD if hypothesis == "mean_reversion_costaware" else SELECTION_SPREAD),
+            selection_spread=(
+                COSTAWARE_SELECTION_SPREAD
+                if hypothesis in ("mean_reversion_v2", "mean_reversion_rr", "mean_reversion_costaware", "mean_reversion_robust")
+                else SELECTION_SPREAD
+            ),
         )
         trades = run_backtest_window(df, selected, holdout_start, n)
         holdout_metrics = metrics([t.r for t in trades])
