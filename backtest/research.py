@@ -245,10 +245,9 @@ def select_params(
     best_stability = None
     if stable:
         if hypothesis in ("mean_reversion_v2", "mean_reversion_rr", "mean_reversion_robust", "mean_reversion_costaware"):
-            # Cost-aware mean-reversion selection is deliberately conservative: the final
-            # candidate must survive the 15bps training cost, remain positive
-            # on the chronological tune slice, and have at least two positive
-            # chronological stability slices. OOS is still untouched here.
+            # Every cost-aware mean-reversion family is selected under the same
+            # conservative 15bps training cost. The final gate still evaluates
+            # 5bps OOS robustness separately, so this cannot leak OOS data.
             robust_ranked = []
             for p, fit_m, stability, slice_metrics in stable:
                 tune_m_candidate = metrics([
@@ -347,7 +346,7 @@ def walk_forward_search(df: pd.DataFrame, folds: int = 4, train_ratio: float = 0
     oos_size = remaining // folds
     if oos_size < 20:
         raise ValueError("OOS fold is too small")
-    selection_spread = (ROBUST_SELECTION_SPREAD if hypothesis == "mean_reversion_robust" else (COSTAWARE_SELECTION_SPREAD if hypothesis == "mean_reversion_costaware" else SELECTION_SPREAD))
+    selection_spread = (COSTAWARE_SELECTION_SPREAD if hypothesis in ("mean_reversion_v2", "mean_reversion_rr", "mean_reversion_costaware") else (ROBUST_SELECTION_SPREAD if hypothesis == "mean_reversion_robust" else SELECTION_SPREAD))
     checkpoint = _load_wf_checkpoint(
         checkpoint_path, hypothesis, n, folds, train_ratio,
         selection_spread=selection_spread,
@@ -367,7 +366,7 @@ def walk_forward_search(df: pd.DataFrame, folds: int = 4, train_ratio: float = 0
             selection = saved["selection"]
             print(f"RESEARCH_FOLD_RESUME={fold_no}/{folds} HYPOTHESIS={hypothesis}", flush=True)
         else:
-            selected, selection = select_params(train, hypothesis=hypothesis, selection_spread=(ROBUST_SELECTION_SPREAD if hypothesis == "mean_reversion_robust" else (COSTAWARE_SELECTION_SPREAD if hypothesis == "mean_reversion_costaware" else SELECTION_SPREAD)))
+            selected, selection = select_params(train, hypothesis=hypothesis, selection_spread=selection_spread)
         oos_trades = run_backtest_window(df, selected, oos_start, oos_end)
         oos_m = metrics([t.r for t in oos_trades])
         baseline_trades = run_backtest_window(df, StrategyParams(hypothesis=hypothesis), oos_start, oos_end)
