@@ -71,3 +71,9 @@ def test_mean_reversion_neighbors_include_strategy_specific_parameters():
     assert any(q.rsi_high != p.rsi_high for q in neighbors)
 
 # Research trigger: rerun the full validation suite after robustness-neighbor hardening.
+
+
+def test_mean_reversion_neighbor_screen_is_training_only():
+    source = Path("backtest/research.py").read_text(encoding="utf-8")
+    assert 'if hypothesis.startswith("mean_reversion"):' in source
+    assert 'neighbor_positive_rate' in source
