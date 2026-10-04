@@ -11,17 +11,20 @@ on:
         description: "Monte Carlo simulations"
         required: false
         default: "1000"
+  push:
+    branches: [main]
 
 jobs:
   research:
+    if: github.event_name == 'workflow_dispatch' || contains(github.event.head_commit.message, '[run-research]')
     runs-on: ubuntu-latest
     timeout-minutes: 45
     env:
       PAPER: "true"
       LIVE: "false"
       REAL: "false"
-      RESEARCH_DAYS: ${{ inputs.research_days }}
-      MC_SIMULATIONS: ${{ inputs.mc_simulations }}
+      RESEARCH_DAYS: ${{ inputs.research_days || '180' }}
+      MC_SIMULATIONS: ${{ inputs.mc_simulations || '1000' }}
       RESEARCH_DATA_URL: "https://raw.githubusercontent.com/getdata-finance/gbpusd-5m-ohlcv-forex-historical-data/main/GBPUSD_5m.csv"
     steps:
       - uses: actions/checkout@v4
