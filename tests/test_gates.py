@@ -40,3 +40,12 @@ def test_validation_gate_rejects_missing_neighbor_stability():
     report = valid_report()
     report["robustness"]["folds"][0]["neighbor_positive_rate"] = 0.49
     assert not passes_validation_gate(report)
+
+
+def test_validation_gate_details_are_auditable():
+    from backtest.gates import validation_gate_details
+    details = validation_gate_details(valid_report())
+    assert details["pass"] is True
+    assert all(details["checks"].values())
+    assert details["observed"]["positive_folds"] == 4
+    assert details["observed"]["spread_5bps_total_r"] == 1.0
