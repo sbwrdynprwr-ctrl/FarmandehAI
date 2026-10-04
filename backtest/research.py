@@ -474,7 +474,7 @@ def robustness(df: pd.DataFrame, folds_out):
             end = len(df)
         oos = df.iloc[start:end].reset_index(drop=True)
         p = StrategyParams(**f["params"])
-        neighbors = [metrics([t.r for t in run_backtest_window(df, q, start, end)]) for q in _neighbor_params(p)]
+        neighbors = [metrics([t.r for t in run_backtest_window(df, q, start, end, spread=SELECTION_SPREAD)]) for q in _neighbor_params(p)]
         base = metrics([t.r for t in run_backtest_window(df, p, start, end)])
         positive = sum(m["total_r"] > 0 for m in neighbors)
         rows.append({"fold": f["fold"], "selected_oos": base,
