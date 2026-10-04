@@ -72,7 +72,7 @@ def mean_reversion_v2_candidates():
     # spread can dominate the expected move. Selection remains training-only.
     for rp, am, bm, rlo, rhi, min_target in itertools.product(
         (10, 14), (1.0, 1.25, 1.5), (0.40, 0.50),
-        (40.0, 45.0), (55.0, 60.0), (0.50, 0.75, 1.00),
+        (40.0, 45.0), (55.0, 60.0), (0.50, 0.75, 1.00, 1.25, 1.50),
     ):
         yield StrategyParams(ema_fast=20, ema_slow=50, rsi_period=rp,
                              atr_period=14, atr_multiplier=am, rr=2.0,
@@ -87,7 +87,7 @@ def mean_reversion_rr_candidates():
     # Same reversal signal as v2, but the exit is a fixed ATR-based RR target.
     # This tests whether a farther predefined target can absorb realistic spread.
     for rp, am, rr, bm, rlo, rhi in itertools.product(
-        (10, 14), (1.25, 1.5, 1.75), (1.0, 1.5, 2.0),
+        (10, 14), (1.25, 1.5, 1.75), (1.0, 1.5, 2.0, 2.5, 3.0),
         (0.40, 0.50), (40.0, 45.0), (55.0, 60.0),
     ):
         yield StrategyParams(ema_fast=20, ema_slow=50, rsi_period=rp,
@@ -244,7 +244,7 @@ def select_params(
     best = baseline
     best_stability = None
     if stable:
-        if hypothesis in ("mean_reversion_robust", "mean_reversion_costaware"):
+        if hypothesis in ("mean_reversion_v2", "mean_reversion_rr", "mean_reversion_robust", "mean_reversion_costaware"):
             # Cost-aware mean-reversion selection is deliberately conservative: the final
             # candidate must survive the 15bps training cost, remain positive
             # on the chronological tune slice, and have at least two positive
@@ -314,7 +314,7 @@ def _load_wf_checkpoint(path, hypothesis, df_len, folds, train_ratio, selection_
     try:
         with open(path, "r", encoding="utf-8") as fp:
             payload = json.load(fp)
-        if payload.get("schema") != 3 or payload.get("hypothesis") != hypothesis:
+        if payload.get("schema") != 4 or payload.get("hypothesis") != hypothesis:
             return {}
         if (payload.get("df_len") != df_len
                 or payload.get("folds") != folds
@@ -380,7 +380,7 @@ def walk_forward_search(df: pd.DataFrame, folds: int = 4, train_ratio: float = 0
         folds_out.append({**fold_record, "trades": oos_trades})
         combined.extend(oos_trades)
         checkpoint_payload = {
-            "schema": 3, "hypothesis": hypothesis, "df_len": n,
+            "schema": 4, "hypothesis": hypothesis, "df_len": n,
             "selection_spread": selection_spread,
             "folds": folds, "train_ratio": train_ratio,
             "completed_folds": [
