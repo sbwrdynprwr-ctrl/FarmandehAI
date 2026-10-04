@@ -8,7 +8,7 @@ print("FARMANDEHAI_BUILD=cost-robust-search-v2", flush=True)
 print(f"FARMANDEHAI_ENV=PAPER:{os.getenv('PAPER')} LIVE:{os.getenv('LIVE')} REAL:{os.getenv('REAL')}", flush=True)
 
 try:
-    from data.loader import DataConfig, fetch_twelvedata
+    from data.loader import DataConfig, load_research_data
     from backtest.research import independent_holdout, walk_forward_search, robustness, monte_carlo
     from backtest.gates import validation_gate_details
 
@@ -16,7 +16,7 @@ try:
     started = time.time()
     research_days = int(os.getenv("RESEARCH_DAYS", "180"))
     print(f"FARMANDEHAI_RESEARCH_DAYS={research_days}", flush=True)
-    df = fetch_twelvedata(DataConfig(), days=research_days)
+    df = load_research_data(DataConfig(), days=research_days)
     print(f"DATA_ROWS={len(df)} FETCH_SECONDS={time.time() - started:.1f}", flush=True)
 
     holdout_ratio = float(os.getenv("HOLDOUT_RATIO", "0.10"))
