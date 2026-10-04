@@ -10,6 +10,7 @@ print(f"FARMANDEHAI_ENV=PAPER:{os.getenv('PAPER')} LIVE:{os.getenv('LIVE')} REAL
 try:
     from data.loader import DataConfig, fetch_twelvedata
     from backtest.research import independent_holdout, walk_forward_search, robustness, monte_carlo
+    from backtest.gates import passes_validation_gate
 
     print("FARMANDEHAI_FETCH_START", flush=True)
     started = time.time()
@@ -50,25 +51,7 @@ try:
 
     approved = []
     for hypothesis, report in validation.items():
-        combined = report["combined"]
-        folds = report["robustness"].get("folds", [])
-        positive_folds = sum(1 for x in folds if x["selected_oos"]["total_r"] > 0)
-        neighbor_rates = [x["neighbor_positive_rate"] for x in folds if x["neighbor_count"]]
-        spread_5bps = sum(
-            x["metrics"]["total_r"]
-            for x in report["robustness"].get("spread_sensitivity", [])
-            if x["spread"] == 0.00005
-        )
-        terminal_r = report["monte_carlo"].get("terminal_r", 0.0)
-        gate = (
-            combined.get("trades", 0) >= 100
-            and combined.get("total_r", 0.0) > 0.0
-            and combined.get("expectancy", 0.0) > 0.0
-            and positive_folds >= 3
-            and (min(neighbor_rates) if neighbor_rates else 0.0) >= 0.50
-            and spread_5bps > 0.0
-            and terminal_r > 0.0
-        )
+        gate = passes_validation_gate(report)
         validation[hypothesis]["gate_pass"] = gate
         if gate:
             approved.append(hypothesis)
