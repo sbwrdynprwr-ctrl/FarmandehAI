@@ -30,13 +30,25 @@ def _signal_array(x, p):
     cl = x["close"].to_numpy(float)
     valid = np.isfinite(ef)&np.isfinite(es)&np.isfinite(rsi)&np.isfinite(atr)&np.isfinite(body)&np.isfinite(macd)&np.isfinite(sig)
     valid &= body >= p.body_min
-    if p.hypothesis in ("mean_reversion", "mean_reversion_v2", "mean_reversion_v3", "mean_reversion_rr", "mean_reversion_costaware"):
+    if p.hypothesis in ("mean_reversion", "mean_reversion_v2", "mean_reversion_v3", "mean_reversion_rr", "mean_reversion_costaware", "mean_reversion_robust"):
         up=x["bb_upper"].to_numpy(float); lo=x["bb_lower"].to_numpy(float)
         mid=x["bb_mid"].to_numpy(float)
         valid &= np.isfinite(mid)
         if p.hypothesis in ("mean_reversion_v2", "mean_reversion_rr"):
             long_mask=valid&(cl<mid)&(rsi<=p.rsi_low)&(cl>op)
             short_mask=valid&(cl>mid)&(rsi>=p.rsi_high)&(cl<op)
+            mh=max(p.rsi_period,p.atr_period,30)
+            long_mask[:mh]=False; short_mask[:mh]=False
+            out[long_mask]="LONG"; out[short_mask]="SHORT"; return out
+        if p.hypothesis == "mean_reversion_robust":
+            gap=x["trend_gap_atr"].to_numpy(float)
+            prev=x["prev_close"].to_numpy(float)
+            valid &= np.isfinite(gap)&np.isfinite(prev)
+            distance=np.abs(cl-mid)/atr
+            valid &= distance >= p.reversion_distance_atr
+            valid &= gap <= p.regime_gap
+            long_mask=valid&(cl<mid)&(rsi<=p.rsi_low)&(cl>op)&(cl>prev)
+            short_mask=valid&(cl>mid)&(rsi>=p.rsi_high)&(cl<op)&(cl<prev)
             mh=max(p.rsi_period,p.atr_period,30)
             long_mask[:mh]=False; short_mask[:mh]=False
             out[long_mask]="LONG"; out[short_mask]="SHORT"; return out
@@ -124,7 +136,7 @@ def _run_backtest_indicators(x,p=StrategyParams(),initial_equity=10000.0,spread=
         if not np.isfinite(risk) or risk<=0: i+=1; continue
         if side=="LONG":
             entry+=spread/2; sl=entry-risk
-            if p.hypothesis=="mean_reversion_v2":
+            if p.hypothesis in ("mean_reversion_v2", "mean_reversion_robust"):
                 tp=float(bb_mid[i])
                 if not np.isfinite(tp) or tp <= entry + spread/2: i+=1; continue
                 if p.min_target_distance_atr > 0 and (tp - entry) / risk < p.min_target_distance_atr: i+=1; continue
