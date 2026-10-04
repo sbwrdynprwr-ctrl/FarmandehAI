@@ -284,7 +284,14 @@ def select_params(
                         (p, fit_m, stability, slice_metrics, tune_m_candidate, neighbor_positive_rate)
                     )
             pool = robust_ranked if robust_ranked else [
-                (*x, metrics([t.r for t in run_backtest(tune, x[0], spread=selection_spread)]))
+                (
+                    x[0],
+                    x[1],
+                    x[2],
+                    x[3],
+                    metrics([t.r for t in run_backtest(tune, x[0], spread=selection_spread)]),
+                    x[4],
+                )
                 for x in stable
             ]
             pool.sort(
