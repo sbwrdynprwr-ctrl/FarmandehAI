@@ -243,14 +243,42 @@ def select_params(
     best = baseline
     best_stability = None
     if stable:
-        stable.sort(
-            key=lambda x: (
-                x[2][3], x[2][1], x[2][0], x[2][2],
-                -x[1]["max_drawdown"], x[2][4]
-            ),
-            reverse=True,
-        )
-        best, _, best_stability, _ = stable[0]
+        if hypothesis == "mean_reversion_robust":
+            # Robust selection is deliberately conservative: the final
+            # candidate must survive the 15bps training cost, remain positive
+            # on the chronological tune slice, and have at least two positive
+            # chronological stability slices. OOS is still untouched here.
+            robust_ranked = []
+            for p, fit_m, stability, slice_metrics in stable:
+                tune_m_candidate = metrics([
+                    t.r for t in run_backtest(tune, p, spread=selection_spread)
+                ])
+                positive_slices = stability[3]
+                if tune_m_candidate["trades"] >= min_trades and tune_m_candidate["total_r"] > 0 and positive_slices >= 2:
+                    robust_ranked.append(
+                        (p, fit_m, stability, slice_metrics, tune_m_candidate)
+                    )
+            pool = robust_ranked if robust_ranked else [
+                (*x, metrics([t.r for t in run_backtest(tune, x[0], spread=selection_spread)]))
+                for x in stable
+            ]
+            pool.sort(
+                key=lambda x: (
+                    x[4]["expectancy"], x[2][1], x[2][0], x[2][2],
+                    -x[4]["max_drawdown"], x[4]["trades"]
+                ),
+                reverse=True,
+            )
+            best, _, best_stability, _, _ = pool[0]
+        else:
+            stable.sort(
+                key=lambda x: (
+                    x[2][3], x[2][1], x[2][0], x[2][2],
+                    -x[1]["max_drawdown"], x[2][4]
+                ),
+                reverse=True,
+            )
+            best, _, best_stability, _ = stable[0]
 
     best_key = (
         best.ema_fast, best.ema_slow, best.rsi_period,
