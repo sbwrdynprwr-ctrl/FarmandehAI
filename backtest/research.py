@@ -17,6 +17,7 @@ from strategy.strategy import StrategyParams, indicators
 
 SELECTION_SPREAD = 0.00005
 ROBUST_SELECTION_SPREAD = 0.00015
+COSTAWARE_SELECTION_SPREAD = 0.00015
 # Keep the expensive chronological stability pass focused on the strongest
 # training candidates. This changes no OOS data usage: all screening remains
 # inside the training window.
@@ -184,7 +185,7 @@ def _candidates_for(hypothesis):
         return list(mean_reversion_rr_candidates())
     if hypothesis == "mean_reversion_costaware":
         return list(mean_reversion_costaware_candidates())
-    if hypothesis == "mean_reversion_robust":
+    if hypothesis in ("mean_reversion_robust", "mean_reversion_costaware"):
         return list(mean_reversion_robust_candidates())
     if hypothesis == "mean_reversion_v3":
         return list(mean_reversion_v3_candidates())
@@ -243,8 +244,8 @@ def select_params(
     best = baseline
     best_stability = None
     if stable:
-        if hypothesis == "mean_reversion_robust":
-            # Robust selection is deliberately conservative: the final
+        if hypothesis in ("mean_reversion_robust", "mean_reversion_costaware"):
+            # Cost-aware mean-reversion selection is deliberately conservative: the final
             # candidate must survive the 15bps training cost, remain positive
             # on the chronological tune slice, and have at least two positive
             # chronological stability slices. OOS is still untouched here.
@@ -313,7 +314,7 @@ def _load_wf_checkpoint(path, hypothesis, df_len, folds, train_ratio, selection_
     try:
         with open(path, "r", encoding="utf-8") as fp:
             payload = json.load(fp)
-        if payload.get("schema") != 2 or payload.get("hypothesis") != hypothesis:
+        if payload.get("schema") != 3 or payload.get("hypothesis") != hypothesis:
             return {}
         if (payload.get("df_len") != df_len
                 or payload.get("folds") != folds
@@ -366,7 +367,7 @@ def walk_forward_search(df: pd.DataFrame, folds: int = 4, train_ratio: float = 0
             selection = saved["selection"]
             print(f"RESEARCH_FOLD_RESUME={fold_no}/{folds} HYPOTHESIS={hypothesis}", flush=True)
         else:
-            selected, selection = select_params(train, hypothesis=hypothesis, selection_spread=(ROBUST_SELECTION_SPREAD if hypothesis == "mean_reversion_robust" else (0.00010 if hypothesis == "mean_reversion_costaware" else SELECTION_SPREAD)))
+            selected, selection = select_params(train, hypothesis=hypothesis, selection_spread=(ROBUST_SELECTION_SPREAD if hypothesis == "mean_reversion_robust" else (COSTAWARE_SELECTION_SPREAD if hypothesis == "mean_reversion_costaware" else SELECTION_SPREAD)))
         oos_trades = run_backtest_window(df, selected, oos_start, oos_end)
         oos_m = metrics([t.r for t in oos_trades])
         baseline_trades = run_backtest_window(df, StrategyParams(hypothesis=hypothesis), oos_start, oos_end)
@@ -379,7 +380,7 @@ def walk_forward_search(df: pd.DataFrame, folds: int = 4, train_ratio: float = 0
         folds_out.append({**fold_record, "trades": oos_trades})
         combined.extend(oos_trades)
         checkpoint_payload = {
-            "schema": 2, "hypothesis": hypothesis, "df_len": n,
+            "schema": 3, "hypothesis": hypothesis, "df_len": n,
             "selection_spread": selection_spread,
             "folds": folds, "train_ratio": train_ratio,
             "completed_folds": [
@@ -469,7 +470,7 @@ def independent_holdout(df: pd.DataFrame, holdout_ratio: float = 0.20):
         selected, selection = select_params(
             df.iloc[:holdout_start].reset_index(drop=True),
             hypothesis=hypothesis,
-            selection_spread=(0.00010 if hypothesis == "mean_reversion_costaware" else SELECTION_SPREAD),
+            selection_spread=(COSTAWARE_SELECTION_SPREAD if hypothesis == "mean_reversion_costaware" else SELECTION_SPREAD),
         )
         trades = run_backtest_window(df, selected, holdout_start, n)
         holdout_metrics = metrics([t.r for t in trades])
