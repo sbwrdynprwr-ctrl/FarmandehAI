@@ -31,6 +31,7 @@ def test_validation_gate_rejects_negative_five_bps_sensitivity():
 
 def test_validation_gate_rejects_insufficient_positive_folds():
     report = valid_report()
+    report["robustness"]["folds"][2]["selected_oos"]["total_r"] = -1.0
     report["robustness"]["folds"][3]["selected_oos"]["total_r"] = -1.0
     assert not passes_validation_gate(report)
 
