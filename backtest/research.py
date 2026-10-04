@@ -429,7 +429,7 @@ def robustness(df: pd.DataFrame, folds_out):
                      "neighbor_count": len(neighbors),
                      "neighbor_positive_count": positive,
                      "neighbor_positive_rate": positive / len(neighbors) if neighbors else 0.0})
-        for spread in (0.0, 0.00005, 0.00010):
+        for spread in (0.0, 0.00005, 0.00010, 0.00015):
             spread_results.append({"fold": f["fold"], "spread": spread,
                                    "metrics": metrics([t.r for t in run_backtest_window(df, p, start, end, spread=spread)])})
     return {"folds": rows, "spread_sensitivity": spread_results}
@@ -464,7 +464,7 @@ def independent_holdout(df: pd.DataFrame, holdout_ratio: float = 0.20):
     if holdout_start < 100 or n - holdout_start < 50:
         raise ValueError("dataset is too small for independent holdout")
     results = {}
-    for hypothesis in ("trend_filtered", "trend", "trend_regime", "mean_reversion_v2", "mean_reversion_rr", "mean_reversion_costaware", "mean_reversion_v3", "mean_reversion", "breakout", "pullback"):
+    for hypothesis in ("trend_filtered", "trend", "trend_regime", "mean_reversion_v2", "mean_reversion_rr", "mean_reversion_costaware", "mean_reversion_robust", "mean_reversion_v3", "mean_reversion", "breakout", "pullback"):
         print(f"FORWARD_HOLDOUT_HYPOTHESIS_START={hypothesis}", flush=True)
         selected, selection = select_params(
             df.iloc[:holdout_start].reset_index(drop=True),
