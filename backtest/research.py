@@ -280,7 +280,8 @@ def select_params(
                 ])
                 positive_slices = stability[3]
                 activity_floor = 20 if hypothesis == "mean_reversion_v2" else min_trades
-                if tune_m_candidate["trades"] >= activity_floor and tune_m_candidate["total_r"] > 0 and positive_slices >= 2:
+                neighbor_floor = 0.50 if hypothesis == "mean_reversion_v2" else 0.0
+                if tune_m_candidate["trades"] >= activity_floor and tune_m_candidate["total_r"] > 0 and positive_slices >= 2 and neighbor_positive_rate >= neighbor_floor:
                     robust_ranked.append(
                         (p, fit_m, stability, slice_metrics, tune_m_candidate, neighbor_positive_rate)
                     )
