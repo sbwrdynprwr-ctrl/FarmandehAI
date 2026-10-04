@@ -185,7 +185,7 @@ def _candidates_for(hypothesis):
         return list(mean_reversion_rr_candidates())
     if hypothesis == "mean_reversion_costaware":
         return list(mean_reversion_costaware_candidates())
-    if hypothesis in ("mean_reversion_robust", "mean_reversion_costaware"):
+    if hypothesis == "mean_reversion_robust":
         return list(mean_reversion_robust_candidates())
     if hypothesis == "mean_reversion_v3":
         return list(mean_reversion_v3_candidates())
@@ -347,7 +347,7 @@ def walk_forward_search(df: pd.DataFrame, folds: int = 4, train_ratio: float = 0
     oos_size = remaining // folds
     if oos_size < 20:
         raise ValueError("OOS fold is too small")
-    selection_spread = ROBUST_SELECTION_SPREAD if hypothesis == "mean_reversion_robust" else SELECTION_SPREAD
+    selection_spread = (ROBUST_SELECTION_SPREAD if hypothesis == "mean_reversion_robust" else (COSTAWARE_SELECTION_SPREAD if hypothesis == "mean_reversion_costaware" else SELECTION_SPREAD))
     checkpoint = _load_wf_checkpoint(
         checkpoint_path, hypothesis, n, folds, train_ratio,
         selection_spread=selection_spread,
