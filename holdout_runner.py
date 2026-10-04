@@ -10,7 +10,7 @@ print(f"FARMANDEHAI_ENV=PAPER:{os.getenv('PAPER')} LIVE:{os.getenv('LIVE')} REAL
 try:
     from data.loader import DataConfig, fetch_twelvedata
     from backtest.research import independent_holdout, walk_forward_search, robustness, monte_carlo
-    from backtest.gates import passes_validation_gate
+    from backtest.gates import validation_gate_details
 
     print("FARMANDEHAI_FETCH_START", flush=True)
     started = time.time()
@@ -51,9 +51,10 @@ try:
 
     approved = []
     for hypothesis, report in validation.items():
-        gate = passes_validation_gate(report)
-        validation[hypothesis]["gate_pass"] = gate
-        if gate:
+        gate_details = validation_gate_details(report)
+        validation[hypothesis]["gate_pass"] = gate_details["pass"]
+        validation[hypothesis]["gate_details"] = gate_details
+        if gate_details["pass"]:
             approved.append(hypothesis)
 
     validation_payload = {
