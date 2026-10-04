@@ -279,7 +279,8 @@ def select_params(
                     t.r for t in run_backtest(tune, p, spread=selection_spread)
                 ])
                 positive_slices = stability[3]
-                if tune_m_candidate["trades"] >= min_trades and tune_m_candidate["total_r"] > 0 and positive_slices >= 2:
+                activity_floor = 20 if hypothesis == "mean_reversion_v2" else min_trades
+                if tune_m_candidate["trades"] >= activity_floor and tune_m_candidate["total_r"] > 0 and positive_slices >= 2:
                     robust_ranked.append(
                         (p, fit_m, stability, slice_metrics, tune_m_candidate, neighbor_positive_rate)
                     )
