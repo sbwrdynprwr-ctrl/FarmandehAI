@@ -294,7 +294,9 @@ def select_params(
                 ),
                 reverse=True,
             )
-            best, _, best_stability, _, _ = pool[0]
+            best_record = pool[0]
+            best = best_record[0]
+            best_stability = best_record[2]
         else:
             stable.sort(
                 key=lambda x: (
@@ -303,7 +305,9 @@ def select_params(
                 ),
                 reverse=True,
             )
-            best, _, best_stability, _, _ = stable[0]
+            best_record = stable[0]
+            best = best_record[0]
+            best_stability = best_record[2]
 
     best_key = (
         best.ema_fast, best.ema_slow, best.rsi_period,
