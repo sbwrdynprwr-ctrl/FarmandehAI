@@ -34,6 +34,21 @@ def validate_ohlcv(df: pd.DataFrame) -> pd.DataFrame:
 def load_csv(path: str) -> pd.DataFrame:
     return validate_ohlcv(pd.read_csv(path))
 
+
+def load_research_data(config: DataConfig, days: int = 30) -> pd.DataFrame:
+    """Load validated historical CSV when configured, otherwise TwelveData."""
+    csv_path = os.getenv("RESEARCH_DATA_CSV")
+    if csv_path:
+        if not os.path.isfile(csv_path):
+            raise RuntimeError(f"RESEARCH_DATA_CSV does not exist: {csv_path}")
+        df = load_csv(csv_path)
+        if df.empty:
+            raise RuntimeError("RESEARCH_DATA_CSV contains no rows")
+        print(f"FARMANDEHAI_DATA_SOURCE=csv:{csv_path}", flush=True)
+        return df
+    print("FARMANDEHAI_DATA_SOURCE=twelvedata", flush=True)
+    return fetch_twelvedata(config, days=days)
+
 def _request(config: DataConfig, key: str, start: datetime | None = None, end: datetime | None = None) -> pd.DataFrame:
     params={"symbol":config.symbol,"interval":config.interval,"outputsize":config.outputsize,"timezone":config.timezone,"format":"JSON"}
     if start is not None and end is not None:
