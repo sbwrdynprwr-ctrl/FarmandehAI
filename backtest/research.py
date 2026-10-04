@@ -94,6 +94,18 @@ def mean_reversion_rr_candidates():
                              rsi_low=rlo, rsi_high=rhi)
 
 
+def mean_reversion_robust_candidates():
+    # Cost-aware reversal with one-bar confirmation.
+    for rp, am, rr, bm, rlo, rhi, gap, dist in itertools.product(
+        (10, 14), (1.25, 1.5), (1.25, 1.5, 1.75), (0.40, 0.50),
+        (40.0, 45.0), (55.0, 60.0), (0.50, 0.75), (0.75, 1.00),
+    ):
+        yield StrategyParams(ema_fast=20, ema_slow=50, rsi_period=rp,
+                             atr_period=14, atr_multiplier=am, rr=rr,
+                             body_min=bm, hypothesis="mean_reversion_robust",
+                             rsi_low=rlo, rsi_high=rhi, regime_gap=gap,
+                             reversion_distance_atr=dist, confirmation_bars=1)
+
 def mean_reversion_costaware_candidates():
     # Conservative reversal branch: avoid strong trends, require a meaningful
     # excursion from the mean, and select parameters against a 10bps training
@@ -171,6 +183,8 @@ def _candidates_for(hypothesis):
         return list(mean_reversion_rr_candidates())
     if hypothesis == "mean_reversion_costaware":
         return list(mean_reversion_costaware_candidates())
+    if hypothesis == "mean_reversion_robust":
+        return list(mean_reversion_robust_candidates())
     if hypothesis == "mean_reversion_v3":
         return list(mean_reversion_v3_candidates())
     if hypothesis == "mean_reversion":
@@ -316,7 +330,7 @@ def walk_forward_search(df: pd.DataFrame, folds: int = 4, train_ratio: float = 0
             selection = saved["selection"]
             print(f"RESEARCH_FOLD_RESUME={fold_no}/{folds} HYPOTHESIS={hypothesis}", flush=True)
         else:
-            selected, selection = select_params(train, hypothesis=hypothesis, selection_spread=(0.00010 if hypothesis == "mean_reversion_costaware" else SELECTION_SPREAD))
+            selected, selection = select_params(train, hypothesis=hypothesis, selection_spread=(0.00010 if hypothesis in ("mean_reversion_costaware", "mean_reversion_robust") else SELECTION_SPREAD))
         oos_trades = run_backtest_window(df, selected, oos_start, oos_end)
         oos_m = metrics([t.r for t in oos_trades])
         baseline_trades = run_backtest_window(df, StrategyParams(hypothesis=hypothesis), oos_start, oos_end)
