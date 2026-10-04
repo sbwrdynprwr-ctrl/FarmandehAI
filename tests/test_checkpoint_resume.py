@@ -9,7 +9,7 @@ def test_walk_forward_checkpoint_round_trip(tmp_path):
         "df_len": 1000,
         "folds": 4,
         "train_ratio": 0.5,
-        "selection_spread": 0.00005,
+        "selection_spread": 0.00015,
         "completed_folds": [
             {"fold": 1, "train_rows": 500, "oos_rows": 125, "params": {"hypothesis": "mean_reversion_v2"}, "selection": {"selection_score": [1, 2, 3, 4]}, "oos_metrics": {"trades": 10}}
         ],
