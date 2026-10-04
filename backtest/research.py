@@ -415,6 +415,22 @@ def _neighbor_params(p: StrategyParams):
     }
     if p.hypothesis == "breakout":
         grids["donchian_period"] = (max(5, p.donchian_period - 5), p.donchian_period + 5)
+    if p.hypothesis in (
+        "mean_reversion_v2", "mean_reversion_v3",
+        "mean_reversion_costaware", "mean_reversion_robust",
+    ):
+        grids["regime_gap"] = (max(0.25, p.regime_gap - 0.25), p.regime_gap + 0.25)
+        grids["reversion_distance_atr"] = (
+            max(0.25, p.reversion_distance_atr - 0.25),
+            p.reversion_distance_atr + 0.25,
+        )
+        grids["rsi_low"] = (max(20.0, p.rsi_low - 5.0), min(55.0, p.rsi_low + 5.0))
+        grids["rsi_high"] = (max(45.0, p.rsi_high - 5.0), min(80.0, p.rsi_high + 5.0))
+    if p.hypothesis == "mean_reversion_v2":
+        grids["min_target_distance_atr"] = (
+            max(0.0, p.min_target_distance_atr - 0.25),
+            p.min_target_distance_atr + 0.25,
+        )
     for name, vals in grids.items():
         for v in vals:
             d = asdict(p)
