@@ -254,14 +254,16 @@ def select_params(
         if stability[0] > -900:
             # Training-only neighbor robustness. The final approval gate still
             # recomputes neighbor stability on unseen OOS data at 5bps.
-            neighbor_metrics = []
-            for q in _neighbor_params(p):
-                q_trades = run_backtest(fit, q, spread=selection_spread)
-                neighbor_metrics.append(metrics([t.r for t in q_trades]))
-            neighbor_positive_rate = (
-                sum(m["total_r"] > 0.0 for m in neighbor_metrics) / len(neighbor_metrics)
-                if neighbor_metrics else 0.0
-            )
+            neighbor_positive_rate = 0.0
+            if hypothesis.startswith("mean_reversion"):
+                neighbor_metrics = []
+                for q in _neighbor_params(p):
+                    q_trades = run_backtest(fit, q, spread=selection_spread)
+                    neighbor_metrics.append(metrics([t.r for t in q_trades]))
+                neighbor_positive_rate = (
+                    sum(m["total_r"] > 0.0 for m in neighbor_metrics) / len(neighbor_metrics)
+                    if neighbor_metrics else 0.0
+                )
             stable.append((p, fit_m, stability, slice_metrics, neighbor_positive_rate))
 
     best = baseline
