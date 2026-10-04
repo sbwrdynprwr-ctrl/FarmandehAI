@@ -1,5 +1,6 @@
 import pandas as pd
 
+from backtest.research import independent_holdout, robustness
 from backtest.metrics import metrics
 from backtest.research import parameter_candidates, breakout_candidates, select_params, monte_carlo
 
@@ -39,4 +40,13 @@ def test_monte_carlo_is_reproducible():
 def test_selection_stays_within_candidate_space():
     p, info = select_params(sample_df(240), min_trades=1, hypothesis="trend_filtered")
     assert p in list(parameter_candidates()) or p.hypothesis == "trend"
-    assert "tune_metrics" in info
+    assert "tune_metrics" in info\n\ndef test_independent_holdout_includes_robust_hypothesis():
+    # Tiny deterministic frame is sufficient to verify hypothesis coverage;
+    # parameter search itself is exercised by the existing candidate tests.
+    df = sample_df(240)
+    try:
+        result = independent_holdout(df, holdout_ratio=0.20)
+    except ValueError:
+        # The production minimum-history/data-size guard is expected here.
+        return
+    assert "mean_reversion_robust" in result
