@@ -458,7 +458,7 @@ def _load_wf_checkpoint(path, hypothesis, df_len, folds, train_ratio, selection_
     try:
         with open(path, "r", encoding="utf-8") as fp:
             payload = json.load(fp)
-        if payload.get("schema") != 6 or payload.get("hypothesis") != hypothesis:
+        if payload.get("schema") != 7 or payload.get("hypothesis") != hypothesis:
             return {}
         if (payload.get("df_len") != df_len
                 or payload.get("folds") != folds
@@ -524,7 +524,7 @@ def walk_forward_search(df: pd.DataFrame, folds: int = 4, train_ratio: float = 0
         folds_out.append({**fold_record, "trades": oos_trades})
         combined.extend(oos_trades)
         checkpoint_payload = {
-            "schema": 6, "hypothesis": hypothesis, "df_len": n,
+            "schema": 7, "hypothesis": hypothesis, "df_len": n,
             "selection_spread": selection_spread,
             "folds": folds, "train_ratio": train_ratio,
             "completed_folds": [
@@ -631,7 +631,7 @@ def independent_holdout(df: pd.DataFrame, holdout_ratio: float = 0.20, checkpoin
         try:
             with open(checkpoint_path, "r", encoding="utf-8") as fp:
                 saved = json.load(fp)
-            if (saved.get("schema") == 1 and saved.get("df_len") == n
+            if (saved.get("schema") == 2 and saved.get("df_len") == n
                     and float(saved.get("holdout_ratio")) == float(holdout_ratio)):
                 results.update(saved.get("completed", {}))
         except (OSError, ValueError, TypeError):
@@ -664,7 +664,7 @@ def independent_holdout(df: pd.DataFrame, holdout_ratio: float = 0.20, checkpoin
         }
         if checkpoint_path:
             payload = {
-                "schema": 1, "df_len": n, "holdout_ratio": holdout_ratio,
+                "schema": 2, "df_len": n, "holdout_ratio": holdout_ratio,
                 "completed": results,
             }
             _save_wf_checkpoint(checkpoint_path, payload)
