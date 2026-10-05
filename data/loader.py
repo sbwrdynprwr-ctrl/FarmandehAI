@@ -4,6 +4,7 @@ import os
 import time
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
+from pathlib import Path
 from typing import Optional
 import pandas as pd
 import requests
@@ -166,19 +167,55 @@ def fetch_twelvedata(config: DataConfig, api_key: Optional[str] = None, days: in
     chunks = []
     window = timedelta(days=10)
     cursor = start
+    cache_root = Path(os.getenv("FARMANDEHAI_DATA_CACHE_DIR", "/data/market_cache"))
+    cache_root.mkdir(parents=True, exist_ok=True)
+    cache_prefix = (
+        config.symbol.replace("/", "_").replace(" ", "_")
+        + "__"
+        + config.interval
+    )
     while cursor < end:
         chunk_end = min(cursor + window, end)
+        cache_name = (
+            f"{cache_prefix}__{cursor.date().isoformat()}"
+            f"__{chunk_end.date().isoformat()}.csv"
+        )
+        cache_path = cache_root / cache_name
         print(
             f"FARMANDEHAI_DATA_CHUNK_START={cursor.isoformat()}..{chunk_end.isoformat()}",
             flush=True,
         )
-        chunk = _request(config, key, cursor, chunk_end)
+        if cache_path.exists():
+            try:
+                cached = load_csv(str(cache_path))
+                if not cached.empty:
+                    chunk = cached
+                    print(
+                        f"FARMANDEHAI_DATA_CACHE_HIT={cache_path.name} ROWS={len(chunk)}",
+                        flush=True,
+                    )
+                else:
+                    raise ValueError("empty cache")
+            except Exception as exc:
+                print(
+                    f"FARMANDEHAI_DATA_CACHE_INVALID={cache_path.name} "
+                    f"ERROR={type(exc).__name__}",
+                    flush=True,
+                )
+                cache_path.unlink(missing_ok=True)
+                chunk = _request(config, key, cursor, chunk_end)
+        else:
+            chunk = _request(config, key, cursor, chunk_end)
+
+        if not chunk.empty:
+            chunk.to_csv(cache_path, index=False)
         print(
             f"FARMANDEHAI_DATA_CHUNK_DONE={len(chunk)}",
             flush=True,
         )
         chunks.append(chunk)
-        cursor = chunk_end + timedelta(minutes=5)
+        last_ts = chunk["timestamp"].max().to_pydatetime()
+        cursor = max(chunk_end, last_ts) + timedelta(minutes=5)
     if not chunks:
         raise RuntimeError("No market data returned")
     return validate_ohlcv(pd.concat(chunks, ignore_index=True))
