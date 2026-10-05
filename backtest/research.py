@@ -18,6 +18,10 @@ from strategy.strategy import StrategyParams, indicators
 SELECTION_SPREAD = 0.00005
 ROBUST_SELECTION_SPREAD = 0.00015
 COSTAWARE_SELECTION_SPREAD = 0.00015
+# Keep training neighbor robustness aligned with the final OOS neighbor gate.
+# Candidate profitability can still be selected under the conservative 15bps cost,
+# but neighbor stability itself must be evaluated at the exact 5bps gate spread.
+NEIGHBOR_SELECTION_SPREAD = 0.00005
 # Keep the expensive chronological stability pass focused on the strongest
 # training candidates. This changes no OOS data usage: all screening remains
 # inside the training window.
@@ -279,7 +283,7 @@ def select_params(
             neighbor_worst_slice_rate = 0.0
             if hypothesis.startswith("mean_reversion"):
                 neighbor_positive_rate, neighbor_worst_slice_rate = _training_neighbor_rates(
-                    fit, p, selection_spread
+                    fit, p, NEIGHBOR_SELECTION_SPREAD
                 )
             stable.append((p, fit_m, stability, slice_metrics, neighbor_positive_rate, neighbor_worst_slice_rate))
 
