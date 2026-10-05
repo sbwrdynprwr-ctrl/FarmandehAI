@@ -53,3 +53,6 @@ Research validation checkpoint: 2026-10-05T06:35:23.805Z
 <!-- research trigger: v2 target-floor expansion 2026-10-05 -->
 
 <!-- research trigger: active-v2-selection-20261005 -->
+
+
+<!-- [run-research] neighbor stability spread alignment -->
