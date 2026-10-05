@@ -40,3 +40,6 @@ The canonical deployment source is `main`. Every push to `main` is covered by Gi
 
 ## Research gate
 No live/real execution is permitted by the automation chain. The next promotion step after a passing statistical gate is paper-only shadow validation; external AI critics are added only after the statistical baseline is robust.
+
+
+Research validation checkpoint updated: worst-slice neighbor stability screening remains enforced.
