@@ -56,3 +56,6 @@ Research validation checkpoint: 2026-10-05T06:35:23.805Z
 
 
 <!-- [run-research] neighbor stability spread alignment -->
+
+
+Research trigger: fit-positive mean-reversion selection validation 2026-10-05T09:00Z
