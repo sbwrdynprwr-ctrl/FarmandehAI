@@ -36,6 +36,10 @@ MAX_SEARCH_CANDIDATES = 64
 # deterministic search budget so a viable neighborhood is not missed simply
 # because the generic cap samples too sparsely. Final OOS gates are unchanged.
 MAX_ROBUST_SEARCH_CANDIDATES = 256
+# The v2 execution-aware grid has 144 candidates. Search the full grid so a
+# viable cost-robust neighborhood is not lost to deterministic downsampling.
+MAX_V2_SEARCH_CANDIDATES = 144
+MAX_V2_STABILITY_CANDIDATES = 48
 
 
 def _bounded_candidates(candidates):
@@ -286,8 +290,10 @@ def select_params(
     tune = train.iloc[split:].reset_index(drop=True)
     candidate_limit = (
         MAX_ROBUST_SEARCH_CANDIDATES
-        if hypothesis in ("mean_reversion_robust", "mean_reversion_costaware", "mean_reversion_band", "mean_reversion_regime")
-        else MAX_SEARCH_CANDIDATES
+        if hypothesis == "mean_reversion_v2"
+        else (MAX_ROBUST_SEARCH_CANDIDATES
+              if hypothesis in ("mean_reversion_robust", "mean_reversion_costaware", "mean_reversion_band", "mean_reversion_regime")
+              else MAX_SEARCH_CANDIDATES)
     )
     raw_candidates = _candidates_for(hypothesis)
     if len(raw_candidates) <= candidate_limit:
@@ -324,10 +330,12 @@ def select_params(
     # Rank is training-only, so this bound cannot leak OOS information.
     stability_limit = min(
         len(ranked),
-        24 if hypothesis in ("mean_reversion_v2", "mean_reversion_rr",
-                             "mean_reversion_robust", "mean_reversion_costaware",
-                             "mean_reversion_band", "mean_reversion_regime")
-        else MAX_STABILITY_CANDIDATES,
+        MAX_V2_STABILITY_CANDIDATES if hypothesis == "mean_reversion_v2" else (
+            24 if hypothesis in ("mean_reversion_rr", "mean_reversion_robust",
+                                 "mean_reversion_costaware", "mean_reversion_band",
+                                 "mean_reversion_regime")
+            else MAX_STABILITY_CANDIDATES
+        ),
     )
     stability_candidates = ranked[:stability_limit]
 
