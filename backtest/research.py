@@ -32,6 +32,10 @@ MAX_STABILITY_CANDIDATES = 20
 # computationally unbounded in practice. Keep broad coverage while making each
 # pass finite and repeatable; the final OOS gates remain unchanged.
 MAX_SEARCH_CANDIDATES = 64
+# Robust mean-reversion has a much larger candidate grid. Give it a wider,
+# deterministic search budget so a viable neighborhood is not missed simply
+# because the generic cap samples too sparsely. Final OOS gates are unchanged.
+MAX_ROBUST_SEARCH_CANDIDATES = 256
 
 
 def _bounded_candidates(candidates):
@@ -248,7 +252,17 @@ def select_params(
     split = max(1, int(len(train) * 0.75))
     fit = train.iloc[:split].reset_index(drop=True)
     tune = train.iloc[split:].reset_index(drop=True)
-    candidates = _bounded_candidates(_candidates_for(hypothesis))
+    candidate_limit = (
+        MAX_ROBUST_SEARCH_CANDIDATES
+        if hypothesis in ("mean_reversion_robust", "mean_reversion_costaware")
+        else MAX_SEARCH_CANDIDATES
+    )
+    raw_candidates = _candidates_for(hypothesis)
+    if len(raw_candidates) <= candidate_limit:
+        candidates = raw_candidates
+    else:
+        idx = np.linspace(0, len(raw_candidates) - 1, candidate_limit, dtype=int)
+        candidates = [raw_candidates[i] for i in idx]
     baseline = StrategyParams(hypothesis=hypothesis)
     ranked = []
     indicator_cache = {}
