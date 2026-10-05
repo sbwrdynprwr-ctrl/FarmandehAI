@@ -310,7 +310,8 @@ def select_params(
     stability_limit = min(
         len(ranked),
         24 if hypothesis in ("mean_reversion_v2", "mean_reversion_rr",
-                             "mean_reversion_robust", "mean_reversion_costaware")
+                             "mean_reversion_robust", "mean_reversion_costaware",
+                             "mean_reversion_band")
         else MAX_STABILITY_CANDIDATES,
     )
     stability_candidates = ranked[:stability_limit]
