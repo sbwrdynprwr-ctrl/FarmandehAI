@@ -398,7 +398,7 @@ def _load_wf_checkpoint(path, hypothesis, df_len, folds, train_ratio, selection_
     try:
         with open(path, "r", encoding="utf-8") as fp:
             payload = json.load(fp)
-        if payload.get("schema") != 4 or payload.get("hypothesis") != hypothesis:
+        if payload.get("schema") != 5 or payload.get("hypothesis") != hypothesis:
             return {}
         if (payload.get("df_len") != df_len
                 or payload.get("folds") != folds
@@ -464,7 +464,7 @@ def walk_forward_search(df: pd.DataFrame, folds: int = 4, train_ratio: float = 0
         folds_out.append({**fold_record, "trades": oos_trades})
         combined.extend(oos_trades)
         checkpoint_payload = {
-            "schema": 4, "hypothesis": hypothesis, "df_len": n,
+            "schema": 5, "hypothesis": hypothesis, "df_len": n,
             "selection_spread": selection_spread,
             "folds": folds, "train_ratio": train_ratio,
             "completed_folds": [
