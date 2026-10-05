@@ -572,7 +572,7 @@ def monte_carlo(rs: Iterable[float], simulations: int = 1000, seed: int = 42):
             "terminal_r": float(sum(vals))}
 
 
-def independent_holdout(df: pd.DataFrame, holdout_ratio: float = 0.20):
+def independent_holdout(df: pd.DataFrame, holdout_ratio: float = 0.20, checkpoint_path: str | None = None):
     """Evaluate each hypothesis once on a final unseen chronological holdout.
 
     Parameter selection is performed only on the pre-holdout portion. The
@@ -585,7 +585,23 @@ def independent_holdout(df: pd.DataFrame, holdout_ratio: float = 0.20):
     if holdout_start < 100 or n - holdout_start < 50:
         raise ValueError("dataset is too small for independent holdout")
     results = {}
-    for hypothesis in ("trend_filtered", "trend", "trend_regime", "mean_reversion_v2", "mean_reversion_rr", "mean_reversion_costaware", "mean_reversion_robust", "mean_reversion_v3", "mean_reversion", "breakout", "pullback"):
+    # Persist each completed holdout hypothesis so an interrupted Railway
+    # container resumes instead of repeating expensive training-only selection.
+    if checkpoint_path and os.path.exists(checkpoint_path):
+        try:
+            with open(checkpoint_path, "r", encoding="utf-8") as fp:
+                saved = json.load(fp)
+            if (saved.get("schema") == 1 and saved.get("df_len") == n
+                    and float(saved.get("holdout_ratio")) == float(holdout_ratio)):
+                results.update(saved.get("completed", {}))
+        except (OSError, ValueError, TypeError):
+            pass
+
+    hypotheses = ("trend_filtered", "trend", "trend_regime", "mean_reversion_v2", "mean_reversion_rr", "mean_reversion_costaware", "mean_reversion_robust", "mean_reversion_v3", "mean_reversion", "breakout", "pullback")
+    for hypothesis in hypotheses:
+        if hypothesis in results:
+            print(f"FORWARD_HOLDOUT_HYPOTHESIS_RESUME={hypothesis}", flush=True)
+            continue
         print(f"FORWARD_HOLDOUT_HYPOTHESIS_START={hypothesis}", flush=True)
         selected, selection = select_params(
             df.iloc[:holdout_start].reset_index(drop=True),
@@ -606,4 +622,10 @@ def independent_holdout(df: pd.DataFrame, holdout_ratio: float = 0.20):
             "selection": selection,
             "holdout_metrics": holdout_metrics,
         }
+        if checkpoint_path:
+            payload = {
+                "schema": 1, "df_len": n, "holdout_ratio": holdout_ratio,
+                "completed": results,
+            }
+            _save_wf_checkpoint(checkpoint_path, payload)
     return results
