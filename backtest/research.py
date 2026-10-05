@@ -329,6 +329,7 @@ def select_params(
                     # before optimizing expectancy. This prevents a very sparse
                     # high-expectancy fit from winning when a more active robust
                     # target exists. The final OOS >=100-trade gate is unchanged.
+                    int(hypothesis in ("mean_reversion_v2", "mean_reversion_rr", "mean_reversion_robust", "mean_reversion_costaware") and x[1]["total_r"] > 0.0),
                     int(hypothesis == "mean_reversion_v2" and x[4]["trades"] >= 30),
                     x[4]["expectancy"], x[5], x[6], x[2][1], x[2][0], x[2][2],
                     -x[4]["max_drawdown"], x[4]["trades"]
