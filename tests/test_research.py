@@ -55,6 +55,7 @@ def test_independent_holdout_includes_robust_hypothesis():
         # The production minimum-history/data-size guard is expected here.
         return
     assert "mean_reversion_robust" in result
+    assert "mean_reversion_regime" in result
 
 def test_mean_reversion_neighbors_include_strategy_specific_parameters():
     p = StrategyParams(
@@ -114,3 +115,10 @@ def test_training_neighbor_stability_uses_gate_spread():
     source = Path("backtest/research.py").read_text(encoding="utf-8")
     assert "NEIGHBOR_SELECTION_SPREAD = 0.00005" in source
     assert "_training_neighbor_rates(\n                    fit, p, NEIGHBOR_SELECTION_SPREAD" in source
+
+def test_regime_aware_mean_reversion_is_distinct():
+    from backtest.research import mean_reversion_regime_candidates
+    ps = list(mean_reversion_regime_candidates())
+    assert len(ps) == 96
+    assert all(p.hypothesis == "mean_reversion_regime" for p in ps)
+    assert all(0.25 <= p.regime_gap <= 0.75 for p in ps)
