@@ -269,7 +269,14 @@ def select_params(
     # Stage 2: the expensive chronological stability test is run only on the
     # strongest training candidates. No holdout/OOS observations are touched.
     ranked.sort(key=lambda x: _score(x[1]), reverse=True)
-    stability_candidates = ranked[:MAX_STABILITY_CANDIDATES]
+    # Robust mean-reversion families must search the full bounded candidate
+    # space because the final training gates include neighbor stability and
+    # exact 5bps viability, which are not equivalent to the primary fit rank.
+    stability_limit = len(ranked) if hypothesis in (
+        "mean_reversion_v2", "mean_reversion_rr",
+        "mean_reversion_robust", "mean_reversion_costaware"
+    ) else MAX_STABILITY_CANDIDATES
+    stability_candidates = ranked[:stability_limit]
 
     stable = []
     for p, fit_m, x_fit in stability_candidates:
@@ -323,17 +330,9 @@ def select_params(
                         (p, fit_m, stability, slice_metrics, gate_m_candidate,
                          neighbor_positive_rate, neighbor_worst_slice_rate)
                     )
-            pool = robust_ranked if robust_ranked else [
-                (
-                    x[0],
-                    x[1],
-                    x[2],
-                    x[3],
-                    metrics([t.r for t in run_backtest(tune, x[0], spread=selection_spread)]),
-                    x[4], x[5],
-                )
-                for x in stable
-            ]
+            # Fail closed: if no candidate satisfies the complete training
+            # robustness contract, do not silently reintroduce a rejected one.
+            pool = robust_ranked
             pool.sort(
                 key=lambda x: (
                     # For v2, prefer candidates with enough training activity
