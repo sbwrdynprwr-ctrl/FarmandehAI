@@ -106,7 +106,7 @@ def mean_reversion_v2_candidates():
     # spread can dominate the expected move. Selection remains training-only.
     for rp, am, bm, rlo, rhi, min_target in itertools.product(
         (10, 14), (1.0, 1.25, 1.5), (0.40, 0.50),
-        (40.0, 45.0), (55.0, 60.0), (0.50, 0.75, 1.00, 1.25, 1.50),
+        (40.0, 45.0), (55.0, 60.0), (0.25, 0.50, 0.75, 1.00, 1.25, 1.50),
     ):
         yield StrategyParams(ema_fast=20, ema_slow=50, rsi_period=rp,
                              atr_period=14, atr_multiplier=am, rr=2.0,
