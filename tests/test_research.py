@@ -94,3 +94,5 @@ def test_mean_reversion_v2_has_training_neighbor_stability_floor():
     source = Path("backtest/research.py").read_text(encoding="utf-8")
     assert 'neighbor_floor = 0.50 if hypothesis == "mean_reversion_v2" else 0.0' in source
     assert 'neighbor_positive_rate >= neighbor_floor' in source
+    assert 'neighbor_worst_slice_rate >= neighbor_floor' in source
+    assert 'def _training_neighbor_rates(' in source
