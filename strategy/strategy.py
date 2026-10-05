@@ -54,6 +54,22 @@ def indicators(df: pd.DataFrame, p: StrategyParams) -> pd.DataFrame:
     x["prev_close"] = close.shift(1)
     return x
 
+def _confirmation_ok(x: pd.DataFrame, i: int, p: StrategyParams, direction: str) -> bool:
+    """Require prior candles to confirm the current reversal direction without look-ahead."""
+    bars = max(0, int(p.confirmation_bars))
+    if bars == 0:
+        return True
+    start = i - bars
+    if start < 0:
+        return False
+    for j in range(start, i):
+        r = x.iloc[j]
+        if direction == "LONG" and not (r.close > r.open):
+            return False
+        if direction == "SHORT" and not (r.close < r.open):
+            return False
+    return True
+
 def signal_at(x: pd.DataFrame, i: int, p: StrategyParams):
     if p.hypothesis == "breakout":
         min_history = max(p.atr_period, p.donchian_period, 30)
@@ -87,9 +103,9 @@ def signal_at(x: pd.DataFrame, i: int, p: StrategyParams):
             return None
         if distance < p.reversion_distance_atr:
             return None
-        if r.close < r.bb_mid and r.rsi <= p.rsi_low and r.close > r.open and r.close > r.prev_close:
+        if r.close < r.bb_mid and r.rsi <= p.rsi_low and r.close > r.open and r.close > r.prev_close and _confirmation_ok(x, i, p, "LONG"):
             return "LONG"
-        if r.close > r.bb_mid and r.rsi >= p.rsi_high and r.close < r.open and r.close < r.prev_close:
+        if r.close > r.bb_mid and r.rsi >= p.rsi_high and r.close < r.open and r.close < r.prev_close and _confirmation_ok(x, i, p, "SHORT"):
             return "SHORT"
         return None
     if p.hypothesis == "mean_reversion_robust":
