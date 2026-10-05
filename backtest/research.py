@@ -321,6 +321,11 @@ def select_params(
             ]
             pool.sort(
                 key=lambda x: (
+                    # For v2, prefer candidates with enough training activity
+                    # before optimizing expectancy. This prevents a very sparse
+                    # high-expectancy fit from winning when a more active robust
+                    # target exists. The final OOS >=100-trade gate is unchanged.
+                    int(hypothesis == "mean_reversion_v2" and x[4]["trades"] >= 30),
                     x[4]["expectancy"], x[5], x[6], x[2][1], x[2][0], x[2][2],
                     -x[4]["max_drawdown"], x[4]["trades"]
                 ),
