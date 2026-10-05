@@ -349,9 +349,16 @@ def select_params(
                 ),
                 reverse=True,
             )
-            best_record = pool[0]
-            best = best_record[0]
-            best_stability = best_record[2]
+            if pool:
+                best_record = pool[0]
+                best = best_record[0]
+                best_stability = best_record[2]
+            else:
+                # Fail closed without crashing: no training candidate met the
+                # complete robustness contract, so keep the baseline and let
+                # downstream OOS gates reject it rather than selecting a fragile fit.
+                best = baseline
+                best_stability = None
         else:
             stable.sort(
                 key=lambda x: (
