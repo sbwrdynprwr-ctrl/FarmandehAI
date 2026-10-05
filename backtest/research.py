@@ -109,6 +109,21 @@ def parameter_candidates(hypothesis: str = "trend_filtered"):
                              body_min=bm, hypothesis=hypothesis, trend_strength=strength, rsi_low=rlo, rsi_high=rhi)
 
 
+def mean_reversion_band_candidates():
+    # Bollinger-band excursion plus reversal confirmation.
+    for rp, am, bm, rlo, rhi, dist in itertools.product(
+        (10, 14), (1.25, 1.5), (0.40, 0.50),
+        (35.0, 40.0), (60.0, 65.0), (0.50, 0.75, 1.00),
+    ):
+        yield StrategyParams(
+            ema_fast=20, ema_slow=50, rsi_period=rp,
+            atr_period=14, atr_multiplier=am, rr=2.0,
+            body_min=bm, hypothesis="mean_reversion_band",
+            rsi_low=rlo, rsi_high=rhi,
+            reversion_distance_atr=dist,
+        )
+
+
 def mean_reversion_v2_candidates():
     # Execution-aware search: avoid targets so close to entry that realistic
     # spread can dominate the expected move. Selection remains training-only.
@@ -221,6 +236,8 @@ def pullback_candidates():
 
 
 def _candidates_for(hypothesis):
+    if hypothesis == "mean_reversion_band":
+        return list(mean_reversion_band_candidates())
     if hypothesis == "mean_reversion_v2":
         return list(mean_reversion_v2_candidates())
     if hypothesis == "mean_reversion_rr":
@@ -254,7 +271,7 @@ def select_params(
     tune = train.iloc[split:].reset_index(drop=True)
     candidate_limit = (
         MAX_ROBUST_SEARCH_CANDIDATES
-        if hypothesis in ("mean_reversion_robust", "mean_reversion_costaware")
+        if hypothesis in ("mean_reversion_robust", "mean_reversion_costaware", "mean_reversion_band")
         else MAX_SEARCH_CANDIDATES
     )
     raw_candidates = _candidates_for(hypothesis)
@@ -317,7 +334,7 @@ def select_params(
     best = baseline
     best_stability = None
     if stable:
-        if hypothesis in ("mean_reversion_v2", "mean_reversion_rr", "mean_reversion_robust", "mean_reversion_costaware"):
+        if hypothesis in ("mean_reversion_v2", "mean_reversion_rr", "mean_reversion_robust", "mean_reversion_costaware", "mean_reversion_band"):
             # Every cost-aware mean-reversion family is selected under the same
             # conservative 15bps training cost. The final gate still evaluates
             # 5bps OOS robustness separately, so this cannot leak OOS data.
@@ -515,7 +532,7 @@ def _neighbor_params(p: StrategyParams):
     if p.hypothesis == "breakout":
         grids["donchian_period"] = (max(5, p.donchian_period - 5), p.donchian_period + 5)
     if p.hypothesis in (
-        "mean_reversion_v2", "mean_reversion_v3",
+        "mean_reversion_v2", "mean_reversion_v3", "mean_reversion_band",
         "mean_reversion_costaware", "mean_reversion_robust",
     ):
         grids["regime_gap"] = (max(0.25, p.regime_gap - 0.25), p.regime_gap + 0.25)
@@ -604,7 +621,7 @@ def independent_holdout(df: pd.DataFrame, holdout_ratio: float = 0.20, checkpoin
         except (OSError, ValueError, TypeError):
             pass
 
-    hypotheses = ("trend_filtered", "trend", "trend_regime", "mean_reversion_v2", "mean_reversion_rr", "mean_reversion_costaware", "mean_reversion_robust", "mean_reversion_v3", "mean_reversion", "breakout", "pullback")
+    hypotheses = ("trend_filtered", "trend", "trend_regime", "mean_reversion_band", "mean_reversion_v2", "mean_reversion_rr", "mean_reversion_costaware", "mean_reversion_robust", "mean_reversion_v3", "mean_reversion", "breakout", "pullback")
     for hypothesis in hypotheses:
         if hypothesis in results:
             print(f"FORWARD_HOLDOUT_HYPOTHESIS_RESUME={hypothesis}", flush=True)
@@ -615,7 +632,7 @@ def independent_holdout(df: pd.DataFrame, holdout_ratio: float = 0.20, checkpoin
             hypothesis=hypothesis,
             selection_spread=(
                 COSTAWARE_SELECTION_SPREAD
-                if hypothesis in ("mean_reversion_v2", "mean_reversion_rr", "mean_reversion_costaware", "mean_reversion_robust")
+                if hypothesis in ("mean_reversion_v2", "mean_reversion_rr", "mean_reversion_costaware", "mean_reversion_robust", "mean_reversion_band")
                 else SELECTION_SPREAD
             ),
         )
