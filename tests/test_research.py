@@ -101,3 +101,9 @@ def test_mean_reversion_v2_has_training_neighbor_stability_floor():
     assert 'neighbor_positive_rate >= neighbor_floor' in source
     assert 'neighbor_worst_slice_rate >= worst_slice_floor' in source
     assert 'def _training_neighbor_rates(' in source
+
+
+def test_training_neighbor_stability_uses_gate_spread():
+    source = Path("backtest/research.py").read_text(encoding="utf-8")
+    assert "NEIGHBOR_SELECTION_SPREAD = 0.00005" in source
+    assert "_training_neighbor_rates(\n                    fit, p, NEIGHBOR_SELECTION_SPREAD" in source
