@@ -168,7 +168,16 @@ def fetch_twelvedata(config: DataConfig, api_key: Optional[str] = None, days: in
     cursor = start
     while cursor < end:
         chunk_end = min(cursor + window, end)
-        chunks.append(_request(config, key, cursor, chunk_end))
+        print(
+            f"FARMANDEHAI_DATA_CHUNK_START={cursor.isoformat()}..{chunk_end.isoformat()}",
+            flush=True,
+        )
+        chunk = _request(config, key, cursor, chunk_end)
+        print(
+            f"FARMANDEHAI_DATA_CHUNK_DONE={len(chunk)}",
+            flush=True,
+        )
+        chunks.append(chunk)
         cursor = chunk_end + timedelta(minutes=5)
     if not chunks:
         raise RuntimeError("No market data returned")
