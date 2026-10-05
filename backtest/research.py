@@ -296,9 +296,15 @@ def select_params(
                     t.r for t in run_backtest(tune, p, spread=selection_spread)
                 ])
                 positive_slices = stability[3]
+                # Keep enough training activity to avoid ultra-sparse selections,
+                # but do not overconstrain the worst slice: Run #24 showed that
+                # a 50% worst-slice training floor can force an unnecessarily
+                # sparse OOS strategy even when aggregate/OOS neighbor robustness
+                # is excellent. The final OOS gate remains >=50% on every fold.
                 activity_floor = 20 if hypothesis == "mean_reversion_v2" else min_trades
                 neighbor_floor = 0.50 if hypothesis == "mean_reversion_v2" else 0.0
-                if tune_m_candidate["trades"] >= activity_floor and tune_m_candidate["total_r"] > 0 and positive_slices >= 2 and neighbor_positive_rate >= neighbor_floor and neighbor_worst_slice_rate >= neighbor_floor:
+                worst_slice_floor = 0.25 if hypothesis == "mean_reversion_v2" else 0.0
+                if tune_m_candidate["trades"] >= activity_floor and tune_m_candidate["total_r"] > 0 and positive_slices >= 2 and neighbor_positive_rate >= neighbor_floor and neighbor_worst_slice_rate >= worst_slice_floor:
                     robust_ranked.append(
                         (p, fit_m, stability, slice_metrics, tune_m_candidate, neighbor_positive_rate, neighbor_worst_slice_rate)
                     )
