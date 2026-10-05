@@ -165,7 +165,9 @@ def fetch_twelvedata(config: DataConfig, api_key: Optional[str] = None, days: in
     end = datetime.now(timezone.utc)
     start = end - timedelta(days=days)
     chunks = []
-    window = timedelta(days=10)
+    # Smaller windows reduce intermittent historical API stalls while the
+    # on-volume cache keeps completed chunks reusable across restarts.
+    window = timedelta(days=5)
     cursor = start
     cache_root = Path(os.getenv("FARMANDEHAI_DATA_CACHE_DIR", "/data/market_cache"))
     cache_root.mkdir(parents=True, exist_ok=True)
