@@ -28,3 +28,15 @@ def test_pullback_hypothesis_is_supported():
     p=StrategyParams(hypothesis="pullback")
     x=indicators(df,p)
     assert "ema_fast" in x.columns and "macd_signal" in x.columns
+
+
+def test_mean_reversion_regime_confirmation_is_enforced_without_lookahead():
+    ts=pd.date_range("2026-01-01", periods=80, freq="5min")
+    close=[1.0]*70 + [0.98,0.979,0.978,0.977,0.976,0.975,0.974,0.973,0.972,0.971]
+    open_=close.copy()
+    open_[79]=0.970
+    df=pd.DataFrame({"timestamp":ts,"open":open_,"high":[v+0.002 for v in close],"low":[v-0.002 for v in close],"close":close})
+    p=StrategyParams(hypothesis="mean_reversion_regime", confirmation_bars=1, rsi_low=52.0, rsi_high=68.0, body_min=0.1)
+    x=indicators(df,p)
+    # A confirmation bar is required, so a prior bearish candle cannot confirm a LONG reversal.
+    assert signal_at(x,79,p) is None
