@@ -309,7 +309,7 @@ def select_params(
                     x[2],
                     x[3],
                     metrics([t.r for t in run_backtest(tune, x[0], spread=selection_spread)]),
-                    x[4], x[5], x[6],
+                    x[4], x[5],
                 )
                 for x in stable
             ]
