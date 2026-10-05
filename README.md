@@ -46,3 +46,6 @@ Research validation checkpoint updated: worst-slice neighbor stability screening
 
 
 Research validation checkpoint: 2026-10-05T06:35:23.805Z
+
+
+<!-- research-trigger: v2 activity recovery -->
