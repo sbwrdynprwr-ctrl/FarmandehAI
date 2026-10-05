@@ -68,6 +68,27 @@ def _stability_score(tune: pd.DataFrame, p: StrategyParams, spread: float = SELE
     return (mean_exp, min_exp, mean_pf, positive_slices, total_trades), slice_metrics
 
 
+def _training_neighbor_rates(fit: pd.DataFrame, p: StrategyParams, spread: float):
+    """Measure aggregate and worst chronological-slice neighbor stability on training data."""
+    neighbors = _neighbor_params(p)
+    if not neighbors:
+        return 0.0, 0.0
+    chunks = np.array_split(np.arange(len(fit)), 3) if len(fit) >= 60 else [np.arange(len(fit))]
+    all_positive = []
+    slice_rates = []
+    for idx in chunks:
+        tx = fit.iloc[idx].reset_index(drop=True)
+        positive = 0
+        for q in neighbors:
+            q_trades = run_backtest(tx, q, spread=spread)
+            q_metrics = metrics([t.r for t in q_trades])
+            positive += int(q_metrics["total_r"] > 0.0)
+            all_positive.append(q_metrics["total_r"] > 0.0)
+        slice_rates.append(positive / len(neighbors))
+    aggregate = sum(all_positive) / len(all_positive) if all_positive else 0.0
+    return aggregate, min(slice_rates) if slice_rates else 0.0
+
+
 def parameter_candidates(hypothesis: str = "trend_filtered"):
     for ef, es, rp, am, rr, bm, strength, rlo, rhi in itertools.product(
         (15, 20, 25), (45, 50, 55), (14,), (1.25, 1.5), (1.5, 2.0), (0.45, 0.55),
@@ -255,16 +276,12 @@ def select_params(
             # Training-only neighbor robustness. The final approval gate still
             # recomputes neighbor stability on unseen OOS data at 5bps.
             neighbor_positive_rate = 0.0
+            neighbor_worst_slice_rate = 0.0
             if hypothesis.startswith("mean_reversion"):
-                neighbor_metrics = []
-                for q in _neighbor_params(p):
-                    q_trades = run_backtest(fit, q, spread=selection_spread)
-                    neighbor_metrics.append(metrics([t.r for t in q_trades]))
-                neighbor_positive_rate = (
-                    sum(m["total_r"] > 0.0 for m in neighbor_metrics) / len(neighbor_metrics)
-                    if neighbor_metrics else 0.0
+                neighbor_positive_rate, neighbor_worst_slice_rate = _training_neighbor_rates(
+                    fit, p, selection_spread
                 )
-            stable.append((p, fit_m, stability, slice_metrics, neighbor_positive_rate))
+            stable.append((p, fit_m, stability, slice_metrics, neighbor_positive_rate, neighbor_worst_slice_rate))
 
     best = baseline
     best_stability = None
@@ -274,16 +291,16 @@ def select_params(
             # conservative 15bps training cost. The final gate still evaluates
             # 5bps OOS robustness separately, so this cannot leak OOS data.
             robust_ranked = []
-            for p, fit_m, stability, slice_metrics, neighbor_positive_rate in stable:
+            for p, fit_m, stability, slice_metrics, neighbor_positive_rate, neighbor_worst_slice_rate in stable:
                 tune_m_candidate = metrics([
                     t.r for t in run_backtest(tune, p, spread=selection_spread)
                 ])
                 positive_slices = stability[3]
                 activity_floor = 20 if hypothesis == "mean_reversion_v2" else min_trades
                 neighbor_floor = 0.50 if hypothesis == "mean_reversion_v2" else 0.0
-                if tune_m_candidate["trades"] >= activity_floor and tune_m_candidate["total_r"] > 0 and positive_slices >= 2 and neighbor_positive_rate >= neighbor_floor:
+                if tune_m_candidate["trades"] >= activity_floor and tune_m_candidate["total_r"] > 0 and positive_slices >= 2 and neighbor_positive_rate >= neighbor_floor and neighbor_worst_slice_rate >= neighbor_floor:
                     robust_ranked.append(
-                        (p, fit_m, stability, slice_metrics, tune_m_candidate, neighbor_positive_rate)
+                        (p, fit_m, stability, slice_metrics, tune_m_candidate, neighbor_positive_rate, neighbor_worst_slice_rate)
                     )
             pool = robust_ranked if robust_ranked else [
                 (
@@ -292,13 +309,13 @@ def select_params(
                     x[2],
                     x[3],
                     metrics([t.r for t in run_backtest(tune, x[0], spread=selection_spread)]),
-                    x[4],
+                    x[4], x[5], x[6],
                 )
                 for x in stable
             ]
             pool.sort(
                 key=lambda x: (
-                    x[4]["expectancy"], x[5], x[2][1], x[2][0], x[2][2],
+                    x[4]["expectancy"], x[5], x[6], x[2][1], x[2][0], x[2][2],
                     -x[4]["max_drawdown"], x[4]["trades"]
                 ),
                 reverse=True,
