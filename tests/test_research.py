@@ -90,6 +90,11 @@ def test_mean_reversion_v2_has_higher_training_activity_floor():
     assert 'activity_floor = 20 if hypothesis == "mean_reversion_v2" else min_trades' in source
 
 
+def test_mean_reversion_v2_prefers_active_training_candidates():
+    source = Path("backtest/research.py").read_text(encoding="utf-8")
+    assert "int(hypothesis == \"mean_reversion_v2\" and x[4][\"trades\"] >= 30)" in source
+
+
 def test_mean_reversion_v2_has_training_neighbor_stability_floor():
     source = Path("backtest/research.py").read_text(encoding="utf-8")
     assert 'neighbor_floor = 0.50 if hypothesis == "mean_reversion_v2" else 0.0' in source
