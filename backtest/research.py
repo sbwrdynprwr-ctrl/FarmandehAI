@@ -326,7 +326,7 @@ def select_params(
         len(ranked),
         24 if hypothesis in ("mean_reversion_v2", "mean_reversion_rr",
                              "mean_reversion_robust", "mean_reversion_costaware",
-                             "mean_reversion_band")
+                             "mean_reversion_band", "mean_reversion_regime")
         else MAX_STABILITY_CANDIDATES,
     )
     stability_candidates = ranked[:stability_limit]
@@ -549,7 +549,7 @@ def _neighbor_params(p: StrategyParams):
         grids["donchian_period"] = (max(5, p.donchian_period - 5), p.donchian_period + 5)
     if p.hypothesis in (
         "mean_reversion_v2", "mean_reversion_v3", "mean_reversion_band",
-        "mean_reversion_costaware", "mean_reversion_robust",
+        "mean_reversion_costaware", "mean_reversion_robust", "mean_reversion_regime",
     ):
         grids["regime_gap"] = (max(0.25, p.regime_gap - 0.25), p.regime_gap + 0.25)
         grids["reversion_distance_atr"] = (
@@ -637,7 +637,7 @@ def independent_holdout(df: pd.DataFrame, holdout_ratio: float = 0.20, checkpoin
         except (OSError, ValueError, TypeError):
             pass
 
-    hypotheses = ("trend_filtered", "trend", "trend_regime", "mean_reversion_band", "mean_reversion_v2", "mean_reversion_rr", "mean_reversion_costaware", "mean_reversion_robust", "mean_reversion_v3", "mean_reversion", "breakout", "pullback")
+    hypotheses = ("trend_filtered", "trend", "trend_regime", "mean_reversion_band", "mean_reversion_v2", "mean_reversion_rr", "mean_reversion_costaware", "mean_reversion_robust", "mean_reversion_regime", "mean_reversion_v3", "mean_reversion", "breakout", "pullback")
     for hypothesis in hypotheses:
         if hypothesis in results:
             print(f"FORWARD_HOLDOUT_HYPOTHESIS_RESUME={hypothesis}", flush=True)
@@ -648,7 +648,7 @@ def independent_holdout(df: pd.DataFrame, holdout_ratio: float = 0.20, checkpoin
             hypothesis=hypothesis,
             selection_spread=(
                 COSTAWARE_SELECTION_SPREAD
-                if hypothesis in ("mean_reversion_v2", "mean_reversion_rr", "mean_reversion_costaware", "mean_reversion_robust", "mean_reversion_band")
+                if hypothesis in ("mean_reversion_v2", "mean_reversion_rr", "mean_reversion_costaware", "mean_reversion_robust", "mean_reversion_band", "mean_reversion_regime")
                 else SELECTION_SPREAD
             ),
         )
