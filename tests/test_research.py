@@ -103,6 +103,12 @@ def test_mean_reversion_v2_has_training_neighbor_stability_floor():
     assert 'def _training_neighbor_rates(' in source
 
 
+
+
+def test_mean_reversion_selection_prefers_fit_positive_candidates():
+    source = Path("backtest/research.py").read_text(encoding="utf-8")
+    assert 'x[1]["total_r"] > 0.0' in source
+
 def test_training_neighbor_stability_uses_gate_spread():
     source = Path("backtest/research.py").read_text(encoding="utf-8")
     assert "NEIGHBOR_SELECTION_SPREAD = 0.00005" in source
