@@ -286,10 +286,16 @@ def select_params(
     # Robust mean-reversion families must search the full bounded candidate
     # space because the final training gates include neighbor stability and
     # exact 5bps viability, which are not equivalent to the primary fit rank.
-    stability_limit = len(ranked) if hypothesis in (
-        "mean_reversion_v2", "mean_reversion_rr",
-        "mean_reversion_robust", "mean_reversion_costaware"
-    ) else MAX_STABILITY_CANDIDATES
+    # Keep expensive neighbor/stability evaluation bounded even for the
+    # cost-aware families. The candidate grid is still broad, but evaluating
+    # every eligible candidate multiplies dozens of backtests per candidate.
+    # Rank is training-only, so this bound cannot leak OOS information.
+    stability_limit = min(
+        len(ranked),
+        24 if hypothesis in ("mean_reversion_v2", "mean_reversion_rr",
+                             "mean_reversion_robust", "mean_reversion_costaware")
+        else MAX_STABILITY_CANDIDATES,
+    )
     stability_candidates = ranked[:stability_limit]
 
     stable = []
@@ -317,8 +323,9 @@ def select_params(
             # 5bps OOS robustness separately, so this cannot leak OOS data.
             robust_ranked = []
             for p, fit_m, stability, slice_metrics, neighbor_positive_rate, neighbor_worst_slice_rate in stable:
+                tune_x = indicators(tune, p)
                 tune_m_candidate = metrics([
-                    t.r for t in run_backtest(tune, p, spread=selection_spread)
+                    t.r for t in _run_backtest_indicators(tune_x, p, spread=selection_spread)
                 ])
                 # The final gate evaluates the candidate at 5bps OOS. Make the
                 # training selector optimize for that same execution regime while
@@ -326,7 +333,7 @@ def select_params(
                 # constraint. This prevents a candidate from winning on 15bps fit
                 # quality while being fragile at the exact final-gate spread.
                 gate_m_candidate = metrics([
-                    t.r for t in run_backtest(tune, p, spread=NEIGHBOR_SELECTION_SPREAD)
+                    t.r for t in _run_backtest_indicators(tune_x, p, spread=NEIGHBOR_SELECTION_SPREAD)
                 ])
                 positive_slices = stability[3]
                 activity_floor = 20 if hypothesis == "mean_reversion_v2" else min_trades
