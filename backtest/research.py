@@ -124,6 +124,19 @@ def mean_reversion_band_candidates():
         )
 
 
+def mean_reversion_regime_candidates():
+    # Mean reversion is allowed only in a non-trending regime.
+    for rp, am, rr, bm, rlo, rhi, gap, dist in itertools.product(
+        (10, 14), (1.25, 1.5), (1.5, 2.0), (0.40, 0.50),
+        (35.0, 40.0), (60.0, 65.0), (0.50, 0.75), (0.50, 0.75, 1.00),
+    ):
+        yield StrategyParams(
+            ema_fast=20, ema_slow=50, rsi_period=rp, atr_period=14,
+            atr_multiplier=am, rr=rr, body_min=bm, hypothesis="mean_reversion_regime",
+            rsi_low=rlo, rsi_high=rhi, regime_gap=gap,
+            reversion_distance_atr=dist, confirmation_bars=1,
+        )
+
 def mean_reversion_v2_candidates():
     # Execution-aware search: avoid targets so close to entry that realistic
     # spread can dominate the expected move. Selection remains training-only.
@@ -238,6 +251,8 @@ def pullback_candidates():
 def _candidates_for(hypothesis):
     if hypothesis == "mean_reversion_band":
         return list(mean_reversion_band_candidates())
+    if hypothesis == "mean_reversion_regime":
+        return list(mean_reversion_regime_candidates())
     if hypothesis == "mean_reversion_v2":
         return list(mean_reversion_v2_candidates())
     if hypothesis == "mean_reversion_rr":
@@ -271,7 +286,7 @@ def select_params(
     tune = train.iloc[split:].reset_index(drop=True)
     candidate_limit = (
         MAX_ROBUST_SEARCH_CANDIDATES
-        if hypothesis in ("mean_reversion_robust", "mean_reversion_costaware", "mean_reversion_band")
+        if hypothesis in ("mean_reversion_robust", "mean_reversion_costaware", "mean_reversion_band", "mean_reversion_regime")
         else MAX_SEARCH_CANDIDATES
     )
     raw_candidates = _candidates_for(hypothesis)
@@ -335,7 +350,7 @@ def select_params(
     best = baseline
     best_stability = None
     if stable:
-        if hypothesis in ("mean_reversion_v2", "mean_reversion_rr", "mean_reversion_robust", "mean_reversion_costaware", "mean_reversion_band"):
+        if hypothesis in ("mean_reversion_v2", "mean_reversion_rr", "mean_reversion_robust", "mean_reversion_costaware", "mean_reversion_band", "mean_reversion_regime"):
             # Every cost-aware mean-reversion family is selected under the same
             # conservative 15bps training cost. The final gate still evaluates
             # 5bps OOS robustness separately, so this cannot leak OOS data.
