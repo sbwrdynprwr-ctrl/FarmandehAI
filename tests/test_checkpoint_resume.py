@@ -4,7 +4,7 @@ from backtest.research import _load_wf_checkpoint, _save_wf_checkpoint
 def test_walk_forward_checkpoint_round_trip(tmp_path):
     path = tmp_path / "wf.json"
     payload = {
-        "schema": 5,
+        "schema": 6,
         "hypothesis": "mean_reversion_v2",
         "df_len": 1000,
         "folds": 4,
