@@ -57,7 +57,7 @@ def indicators(df: pd.DataFrame, p: StrategyParams) -> pd.DataFrame:
 def signal_at(x: pd.DataFrame, i: int, p: StrategyParams):
     if p.hypothesis == "breakout":
         min_history = max(p.atr_period, p.donchian_period, 30)
-    elif p.hypothesis in ("mean_reversion", "mean_reversion_v2", "mean_reversion_v3", "mean_reversion_rr", "mean_reversion_costaware", "mean_reversion_robust"):
+    elif p.hypothesis in ("mean_reversion", "mean_reversion_v2", "mean_reversion_v3", "mean_reversion_band", "mean_reversion_rr", "mean_reversion_costaware", "mean_reversion_robust"):
         min_history = max(p.rsi_period, p.atr_period, 30)
     elif p.hypothesis in ("trend_filtered", "trend_regime"):
         min_history = max(p.ema_slow, p.rsi_period, p.atr_period, p.slope_bars + 4, 35)
@@ -66,6 +66,18 @@ def signal_at(x: pd.DataFrame, i: int, p: StrategyParams):
     if i < min_history:
         return None
     r = x.iloc[i]
+    if p.hypothesis == "mean_reversion_band":
+        needed = ["rsi", "atr", "body_ratio", "bb_mid", "bb_upper", "bb_lower", "trend_gap_atr"]
+        if not np.isfinite(r[needed].to_numpy(dtype=float)).all() or r.body_ratio < p.body_min or r.atr <= 0:
+            return None
+        distance = abs(r.close - r.bb_mid) / r.atr
+        if r.trend_gap_atr > p.regime_gap or distance < p.reversion_distance_atr:
+            return None
+        if r.close <= r.bb_lower and r.rsi <= p.rsi_low and r.close > r.open:
+            return "LONG"
+        if r.close >= r.bb_upper and r.rsi >= p.rsi_high and r.close < r.open:
+            return "SHORT"
+        return None
     if p.hypothesis == "mean_reversion_robust":
         needed = ["rsi", "atr", "body_ratio", "bb_mid", "trend_gap_atr", "prev_close"]
         if not np.isfinite(r[needed].to_numpy(dtype=float)).all() or r.body_ratio < p.body_min or r.atr <= 0:
