@@ -119,6 +119,6 @@ def test_training_neighbor_stability_uses_gate_spread():
 def test_regime_aware_mean_reversion_is_distinct():
     from backtest.research import mean_reversion_regime_candidates
     ps = list(mean_reversion_regime_candidates())
-    assert len(ps) == 96
+    assert len(ps) == 384
     assert all(p.hypothesis == "mean_reversion_regime" for p in ps)
     assert all(0.25 <= p.regime_gap <= 0.75 for p in ps)
