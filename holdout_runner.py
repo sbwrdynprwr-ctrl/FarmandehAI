@@ -25,7 +25,7 @@ try:
         print(f"FORWARD_HOLDOUT={hypothesis}:{json.dumps(result, default=str)}", flush=True)
     print("FARMANDEHAI_FORWARD_HOLDOUT_DONE", flush=True)
 
-    checkpoint_dir = os.getenv("FARMANDEHAI_CHECKPOINT_DIR", "artifacts/checkpoints")
+    checkpoint_dir = os.getenv("FARMANDEHAI_CHECKPOINT_DIR", "/data/checkpoints")
     os.makedirs(checkpoint_dir, exist_ok=True)
     validation = {}
     holdout_report = results
