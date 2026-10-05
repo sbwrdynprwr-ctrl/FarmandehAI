@@ -639,7 +639,7 @@ def independent_holdout(df: pd.DataFrame, holdout_ratio: float = 0.20, checkpoin
         try:
             with open(checkpoint_path, "r", encoding="utf-8") as fp:
                 saved = json.load(fp)
-            if (saved.get("schema") == 2 and saved.get("df_len") == n
+            if (saved.get("schema") == 3 and saved.get("df_len") == n
                     and float(saved.get("holdout_ratio")) == float(holdout_ratio)):
                 results.update(saved.get("completed", {}))
         except (OSError, ValueError, TypeError):
@@ -672,7 +672,7 @@ def independent_holdout(df: pd.DataFrame, holdout_ratio: float = 0.20, checkpoin
         }
         if checkpoint_path:
             payload = {
-                "schema": 2, "df_len": n, "holdout_ratio": holdout_ratio,
+                "schema": 3, "df_len": n, "holdout_ratio": holdout_ratio,
                 "completed": results,
             }
             _save_wf_checkpoint(checkpoint_path, payload)
