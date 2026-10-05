@@ -299,18 +299,29 @@ def select_params(
                 tune_m_candidate = metrics([
                     t.r for t in run_backtest(tune, p, spread=selection_spread)
                 ])
+                # The final gate evaluates the candidate at 5bps OOS. Make the
+                # training selector optimize for that same execution regime while
+                # retaining the conservative 15bps result as a separate viability
+                # constraint. This prevents a candidate from winning on 15bps fit
+                # quality while being fragile at the exact final-gate spread.
+                gate_m_candidate = metrics([
+                    t.r for t in run_backtest(tune, p, spread=NEIGHBOR_SELECTION_SPREAD)
+                ])
                 positive_slices = stability[3]
-                # Keep enough training activity to avoid ultra-sparse selections,
-                # but do not overconstrain the worst slice: Run #24 showed that
-                # a 50% worst-slice training floor can force an unnecessarily
-                # sparse OOS strategy even when aggregate/OOS neighbor robustness
-                # is excellent. The final OOS gate remains >=50% on every fold.
                 activity_floor = 20 if hypothesis == "mean_reversion_v2" else min_trades
                 neighbor_floor = 0.50 if hypothesis == "mean_reversion_v2" else 0.0
                 worst_slice_floor = 0.25 if hypothesis == "mean_reversion_v2" else 0.0
-                if tune_m_candidate["trades"] >= activity_floor and tune_m_candidate["total_r"] > 0 and positive_slices >= 2 and neighbor_positive_rate >= neighbor_floor and neighbor_worst_slice_rate >= worst_slice_floor:
+                if (
+                    tune_m_candidate["trades"] >= activity_floor
+                    and tune_m_candidate["total_r"] > 0
+                    and gate_m_candidate["total_r"] > 0
+                    and positive_slices >= 2
+                    and neighbor_positive_rate >= neighbor_floor
+                    and neighbor_worst_slice_rate >= worst_slice_floor
+                ):
                     robust_ranked.append(
-                        (p, fit_m, stability, slice_metrics, tune_m_candidate, neighbor_positive_rate, neighbor_worst_slice_rate)
+                        (p, fit_m, stability, slice_metrics, gate_m_candidate,
+                         neighbor_positive_rate, neighbor_worst_slice_rate)
                     )
             pool = robust_ranked if robust_ranked else [
                 (
@@ -331,6 +342,9 @@ def select_params(
                     # target exists. The final OOS >=100-trade gate is unchanged.
                     int(hypothesis in ("mean_reversion_v2", "mean_reversion_rr", "mean_reversion_robust", "mean_reversion_costaware") and x[1]["total_r"] > 0.0),
                     int(hypothesis == "mean_reversion_v2" and x[4]["trades"] >= 30),
+                    # Prefer performance at the exact 5bps final-gate
+                    # spread, then neighbor stability, while retaining 15bps
+                    # profitability as the eligibility constraint above.
                     x[4]["expectancy"], x[5], x[6], x[2][1], x[2][0], x[2][2],
                     -x[4]["max_drawdown"], x[4]["trades"]
                 ),
