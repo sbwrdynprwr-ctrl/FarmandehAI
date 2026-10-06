@@ -44,7 +44,16 @@ try:
             f"{json.dumps({'combined_oos': combined, 'folds': [{'fold': x['fold'], 'trades': x['oos_metrics']['trades'], 'total_r': x['oos_metrics']['total_r'], 'expectancy': x['oos_metrics']['expectancy'], 'profit_factor': x['oos_metrics']['profit_factor']} for x in folds], 'robustness': rb, 'monte_carlo': mc}, default=str)}",
             flush=True,
         )
-        validation[hypothesis] = {\n            "hypothesis": hypothesis,\n            "combined": combined,\n            "robustness": rb,\n            "monte_carlo": mc,\n            "selection_statuses": [\n                fold.get("selection", {}).get("selection_status", "unknown")\n                for fold in folds\n            ],\n        }
+        validation[hypothesis] = {
+            "hypothesis": hypothesis,
+            "combined": combined,
+            "robustness": rb,
+            "monte_carlo": mc,
+            "selection_statuses": [
+                fold.get("selection", {}).get("selection_status", "unknown")
+                for fold in folds
+            ],
+        }
         with open(os.path.join(checkpoint_dir, "validation_partial.json"), "w", encoding="utf-8") as fp:
             json.dump(validation, fp, default=str)
         print(f"ROBUSTNESS_WF_DONE={hypothesis} SECONDS={time.time() - started:.1f}", flush=True)
