@@ -6,6 +6,17 @@ These gates are statistical promotion checks only. They never enable live tradin
 from __future__ import annotations
 
 
+SPECIALIZED_HYPOTHESES = {
+    "mean_reversion_v2",
+    "mean_reversion_rr",
+    "mean_reversion_costaware",
+    "mean_reversion_robust",
+    "mean_reversion_regime",
+    "mean_reversion_v3",
+    "mean_reversion_band",
+}
+
+
 def validation_gate_details(report: dict) -> dict:
     """Return every hard-gate result so research decisions are auditable."""
     combined = report.get("combined", {})
@@ -27,6 +38,19 @@ def validation_gate_details(report: dict) -> dict:
     )
     terminal_r = report.get("monte_carlo", {}).get("terminal_r", 0.0)
 
+    hypothesis = report.get("hypothesis")
+    selection_statuses = report.get("selection_statuses", [])
+    if hypothesis in SPECIALIZED_HYPOTHESES:
+        provenance_ok = (
+            bool(selection_statuses)
+            and all(
+                status in {"robust_candidate_selected", "stable_candidate_selected"}
+                for status in selection_statuses
+            )
+        )
+    else:
+        provenance_ok = True
+
     checks = {
         "min_trades": combined.get("trades", 0) >= 100,
         "positive_total_r": combined.get("total_r", 0.0) > 0.0,
@@ -35,11 +59,14 @@ def validation_gate_details(report: dict) -> dict:
         "neighbor_stability": (min(neighbor_rates) if neighbor_rates else 0.0) >= 0.50,
         "positive_5bps_sensitivity": spread_5bps > 0.0,
         "positive_monte_carlo_terminal": terminal_r > 0.0,
+        "selection_provenance": provenance_ok,
     }
     return {
         "pass": all(checks.values()),
         "checks": checks,
         "observed": {
+            "hypothesis": hypothesis,
+            "selection_statuses": selection_statuses,
             "trades": combined.get("trades", 0),
             "total_r": combined.get("total_r", 0.0),
             "expectancy": combined.get("expectancy", 0.0),
