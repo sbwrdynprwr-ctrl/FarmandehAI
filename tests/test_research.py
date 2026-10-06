@@ -128,5 +128,5 @@ def test_specialized_selection_reports_fail_closed_status():
     source = Path("backtest/research.py").read_text(encoding="utf-8")
     assert '"selection_status": selection_status' in source
     assert 'selection_status = "no_robust_candidate"' in source
-    assert 'payload.get("schema") != 9' in source
-    assert 'saved.get("schema") == 4' in source
+    assert 'payload.get("schema") != 10' in source
+    assert 'saved.get("schema") == 5' in source
