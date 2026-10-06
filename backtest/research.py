@@ -505,7 +505,9 @@ def walk_forward_search(df: pd.DataFrame, folds: int = 4, train_ratio: float = 0
     oos_size = remaining // folds
     if oos_size < 20:
         raise ValueError("OOS fold is too small")
-    # Align parameter selection with the declared 5bps final execution gate.\n    # Higher spreads remain stress tests in downstream robustness sensitivity.\n    selection_spread = SELECTION_SPREAD
+    # Align parameter selection with the declared 5bps final execution gate.
+    # Higher spreads remain stress tests in downstream robustness sensitivity.
+    selection_spread = SELECTION_SPREAD
     checkpoint = _load_wf_checkpoint(
         checkpoint_path, hypothesis, n, folds, train_ratio,
         selection_spread=selection_spread,
