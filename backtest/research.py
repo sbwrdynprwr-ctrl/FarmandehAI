@@ -357,6 +357,7 @@ def select_params(
 
     best = baseline
     best_stability = None
+    selection_status = "baseline_default"
     if stable:
         if hypothesis in ("mean_reversion_v2", "mean_reversion_rr", "mean_reversion_robust", "mean_reversion_costaware", "mean_reversion_band", "mean_reversion_regime"):
             # Every cost-aware mean-reversion family is selected under the same
@@ -415,12 +416,14 @@ def select_params(
                 best_record = pool[0]
                 best = best_record[0]
                 best_stability = best_record[2]
+                selection_status = "robust_candidate_selected"
             else:
                 # Fail closed without crashing: no training candidate met the
                 # complete robustness contract, so keep the baseline and let
                 # downstream OOS gates reject it rather than selecting a fragile fit.
                 best = baseline
                 best_stability = None
+                selection_status = "no_robust_candidate"
         else:
             stable.sort(
                 key=lambda x: (
@@ -432,6 +435,7 @@ def select_params(
             best_record = stable[0]
             best = best_record[0]
             best_stability = best_record[2]
+            selection_status = "stable_candidate_selected"
 
     best_key = (
         best.ema_fast, best.ema_slow, best.rsi_period,
@@ -457,6 +461,7 @@ def select_params(
         "stability_score": best_stability,
         "selection_score": _score(tune_m),
         "selection_spread": selection_spread,
+        "selection_status": selection_status,
     }
 
 
@@ -466,7 +471,7 @@ def _load_wf_checkpoint(path, hypothesis, df_len, folds, train_ratio, selection_
     try:
         with open(path, "r", encoding="utf-8") as fp:
             payload = json.load(fp)
-        if payload.get("schema") != 8 or payload.get("hypothesis") != hypothesis:
+        if payload.get("schema") != 9 or payload.get("hypothesis") != hypothesis:
             return {}
         if (payload.get("df_len") != df_len
                 or payload.get("folds") != folds
@@ -532,7 +537,7 @@ def walk_forward_search(df: pd.DataFrame, folds: int = 4, train_ratio: float = 0
         folds_out.append({**fold_record, "trades": oos_trades})
         combined.extend(oos_trades)
         checkpoint_payload = {
-            "schema": 8, "hypothesis": hypothesis, "df_len": n,
+            "schema": 9, "hypothesis": hypothesis, "df_len": n,
             "selection_spread": selection_spread,
             "folds": folds, "train_ratio": train_ratio,
             "completed_folds": [
@@ -639,7 +644,7 @@ def independent_holdout(df: pd.DataFrame, holdout_ratio: float = 0.20, checkpoin
         try:
             with open(checkpoint_path, "r", encoding="utf-8") as fp:
                 saved = json.load(fp)
-            if (saved.get("schema") == 3 and saved.get("df_len") == n
+            if (saved.get("schema") == 4 and saved.get("df_len") == n
                     and float(saved.get("holdout_ratio")) == float(holdout_ratio)):
                 results.update(saved.get("completed", {}))
         except (OSError, ValueError, TypeError):
@@ -668,11 +673,12 @@ def independent_holdout(df: pd.DataFrame, holdout_ratio: float = 0.20, checkpoin
             "holdout_rows": n - holdout_start,
             "params": asdict(selected),
             "selection": selection,
+            "selection_status": selection.get("selection_status", "unknown"),
             "holdout_metrics": holdout_metrics,
         }
         if checkpoint_path:
             payload = {
-                "schema": 3, "df_len": n, "holdout_ratio": holdout_ratio,
+                "schema": 4, "df_len": n, "holdout_ratio": holdout_ratio,
                 "completed": results,
             }
             _save_wf_checkpoint(checkpoint_path, payload)
