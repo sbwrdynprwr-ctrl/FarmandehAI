@@ -305,6 +305,16 @@ def select_params(
     ranked = []
     indicator_cache = {}
 
+    # Always include the declared baseline as an explicit selection candidate.
+    # It is inserted before bounded sampling so it cannot disappear when the
+    # candidate grid exceeds the search budget. This lets the selector compare
+    # the tuned family against the untouched baseline instead of silently
+    # falling back to it only after all candidates have been rejected.
+    raw_candidates = [baseline] + [
+        p for p in raw_candidates
+        if p != baseline
+    ]
+
     # Stage 1: cheap fit screening for every candidate. Indicators are cached
     # by period parameters so repeated combinations reuse rolling calculations.
     for p in candidates:
@@ -315,7 +325,7 @@ def select_params(
             indicator_cache[key] = x_fit
         fit_trades = _run_backtest_indicators(x_fit, p, spread=selection_spread)
         fit_m = metrics([t.r for t in fit_trades])
-        if fit_m["trades"] >= min_trades:
+        if fit_m["trades"] >= min_trades or p == baseline:
             ranked.append((p, fit_m, x_fit))
 
     # Stage 2: the expensive chronological stability test is run only on the
