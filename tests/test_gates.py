@@ -49,4 +49,27 @@ def test_validation_gate_details_are_auditable():
     assert all(details["checks"].values())
     assert details["observed"]["positive_folds"] == 4
     assert details["observed"]["spread_5bps_total_r"] == 1.0
-\n\ndef test_validation_gate_rejects_specialized_baseline_fallback():\n    report = valid_report()\n    report["hypothesis"] = "mean_reversion_v2"\n    report["selection_statuses"] = [\n        "robust_candidate_selected",\n        "no_robust_candidate",\n        "stable_candidate_selected",\n        "robust_candidate_selected",\n    ]\n    assert not passes_validation_gate(report)\n\n\ndef test_validation_gate_accepts_specialized_real_candidate_provenance():\n    report = valid_report()\n    report["hypothesis"] = "mean_reversion_v2"\n    report["selection_statuses"] = [\n        "robust_candidate_selected",\n        "stable_candidate_selected",\n        "robust_candidate_selected",\n        "stable_candidate_selected",\n    ]\n    assert passes_validation_gate(report)\n
+
+
+def test_validation_gate_rejects_specialized_baseline_fallback():
+    report = valid_report()
+    report["hypothesis"] = "mean_reversion_v2"
+    report["selection_statuses"] = [
+        "robust_candidate_selected",
+        "no_robust_candidate",
+        "stable_candidate_selected",
+        "robust_candidate_selected",
+    ]
+    assert not passes_validation_gate(report)
+
+
+def test_validation_gate_accepts_specialized_real_candidate_provenance():
+    report = valid_report()
+    report["hypothesis"] = "mean_reversion_v2"
+    report["selection_statuses"] = [
+        "robust_candidate_selected",
+        "stable_candidate_selected",
+        "robust_candidate_selected",
+        "stable_candidate_selected",
+    ]
+    assert passes_validation_gate(report)
