@@ -360,9 +360,11 @@ def select_params(
     selection_status = "baseline_default"
     if stable:
         if hypothesis in ("mean_reversion_v2", "mean_reversion_rr", "mean_reversion_robust", "mean_reversion_costaware", "mean_reversion_band", "mean_reversion_regime"):
-            # Every cost-aware mean-reversion family is selected under the same
-            # conservative 15bps training cost. The final gate still evaluates
-            # 5bps OOS robustness separately, so this cannot leak OOS data.
+            # Candidate eligibility is aligned with the exact 5bps regime used
+            # by the final OOS gate. The 15bps result is retained as a stress
+            # metric/ranking signal, but it is not allowed to discard a candidate
+            # before the blind OOS gate gets to judge it. This avoids a training
+            # prefilter becoming stricter than the declared final execution test.
             robust_ranked = []
             for p, fit_m, stability, slice_metrics, neighbor_positive_rate, neighbor_worst_slice_rate in stable:
                 tune_x = indicators(tune, p)
@@ -383,7 +385,6 @@ def select_params(
                 worst_slice_floor = 0.50 if hypothesis in ("mean_reversion_v2", "mean_reversion_robust") else 0.0
                 if (
                     tune_m_candidate["trades"] >= activity_floor
-                    and tune_m_candidate["total_r"] > 0
                     and gate_m_candidate["total_r"] > 0
                     and positive_slices >= 2
                     and neighbor_positive_rate >= neighbor_floor
