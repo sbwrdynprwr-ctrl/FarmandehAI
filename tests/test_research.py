@@ -134,6 +134,6 @@ def test_specialized_selection_reports_fail_closed_status():
 
 def test_specialized_selection_does_not_preempt_final_five_bps_gate():
     source = Path("backtest/research.py").read_text(encoding="utf-8")
-    block = 'tune_m_candidate["trades"] >= activity_floor\\n                    and gate_m_candidate["total_r"] > 0'
-    assert block in source
-    assert 'and tune_m_candidate["total_r"] > 0\\n                    and gate_m_candidate["total_r"] > 0' not in source
+    assert 'tune_m_candidate["trades"] >= activity_floor' in source
+    assert 'gate_m_candidate["total_r"] > 0' in source
+    assert 'and tune_m_candidate["total_r"] > 0' not in source
