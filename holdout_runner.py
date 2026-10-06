@@ -28,17 +28,55 @@ try:
     checkpoint_dir = os.getenv("FARMANDEHAI_CHECKPOINT_DIR", "/data/checkpoints")
     os.makedirs(checkpoint_dir, exist_ok=True)
     validation = {}
+    validation_progress_path = os.path.join(checkpoint_dir, "validation_partial.json")
+    if os.path.exists(validation_progress_path):
+        try:
+            with open(validation_progress_path, "r", encoding="utf-8") as fp:
+                saved_validation = json.load(fp)
+            if isinstance(saved_validation, dict):
+                validation.update(saved_validation)
+                print(f"VALIDATION_PARTIAL_RESUME={len(validation)}", flush=True)
+        except (OSError, ValueError, TypeError):
+            print("VALIDATION_PARTIAL_RESUME=0", flush=True)
     holdout_report = results
     for hypothesis in ("trend_filtered", "trend", "trend_regime", "mean_reversion_v2", "mean_reversion_rr", "mean_reversion_costaware", "mean_reversion_robust", "mean_reversion_regime", "mean_reversion_v3", "mean_reversion", "breakout", "pullback"):
+        existing = validation.get(hypothesis)
+        if (
+            isinstance(existing, dict)
+            and existing.get("combined") is not None
+            and existing.get("robustness") is not None
+            and existing.get("monte_carlo") is not None
+        ):
+            print(f"ROBUSTNESS_WF_RESUME_COMPLETE={hypothesis}", flush=True)
+            continue
+
         print(f"ROBUSTNESS_WF_START={hypothesis}", flush=True)
         started = time.time()
-        folds, combined = walk_forward_search(df, folds=4, train_ratio=0.5, hypothesis=hypothesis, checkpoint_path=os.path.join(checkpoint_dir, f"wf_{hypothesis}.json"))
-        rb = robustness(df, folds)
+        folds, combined = walk_forward_search(
+            df,
+            folds=4,
+            train_ratio=0.5,
+            hypothesis=hypothesis,
+            checkpoint_path=os.path.join(checkpoint_dir, f"wf_{hypothesis}.json"),
+        )
+        print(f"ROBUSTNESS_METRICS_START={hypothesis} FOLDS={len(folds)}", flush=True)
+        try:
+            rb = robustness(df, folds)
+        except BaseException as exc:
+            print(
+                f"ROBUSTNESS_METRICS_ERROR={hypothesis} "
+                f"{type(exc).__name__}:{exc}",
+                flush=True,
+            )
+            raise
+        print(f"ROBUSTNESS_METRICS_DONE={hypothesis}", flush=True)
+        print(f"MONTE_CARLO_START={hypothesis}", flush=True)
         mc = monte_carlo(
             [t.r for fold in folds for t in fold["trades"]],
             simulations=int(os.getenv("MC_SIMULATIONS", "1000")),
             seed=42,
         )
+        print(f"MONTE_CARLO_DONE={hypothesis}", flush=True)
         print(
             f"ROBUSTNESS_WF_SUMMARY={hypothesis}:"
             f"{json.dumps({'combined_oos': combined, 'folds': [{'fold': x['fold'], 'trades': x['oos_metrics']['trades'], 'total_r': x['oos_metrics']['total_r'], 'expectancy': x['oos_metrics']['expectancy'], 'profit_factor': x['oos_metrics']['profit_factor']} for x in folds], 'robustness': rb, 'monte_carlo': mc}, default=str)}",
@@ -54,7 +92,7 @@ try:
                 for fold in folds
             ],
         }
-        with open(os.path.join(checkpoint_dir, "validation_partial.json"), "w", encoding="utf-8") as fp:
+        with open(validation_progress_path, "w", encoding="utf-8") as fp:
             json.dump(validation, fp, default=str)
         print(f"ROBUSTNESS_WF_DONE={hypothesis} SECONDS={time.time() - started:.1f}", flush=True)
 
