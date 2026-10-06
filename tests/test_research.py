@@ -122,3 +122,11 @@ def test_regime_aware_mean_reversion_is_distinct():
     assert len(ps) == 384
     assert all(p.hypothesis == "mean_reversion_regime" for p in ps)
     assert all(0.25 <= p.regime_gap <= 0.75 for p in ps)
+
+
+def test_specialized_selection_reports_fail_closed_status():
+    source = Path("backtest/research.py").read_text(encoding="utf-8")
+    assert '"selection_status": selection_status' in source
+    assert 'selection_status = "no_robust_candidate"' in source
+    assert 'payload.get("schema") != 9' in source
+    assert 'saved.get("schema") == 4' in source
