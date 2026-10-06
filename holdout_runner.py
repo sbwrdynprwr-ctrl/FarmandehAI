@@ -29,13 +29,25 @@ try:
     os.makedirs(checkpoint_dir, exist_ok=True)
     validation = {}
     validation_progress_path = os.path.join(checkpoint_dir, "validation_partial.json")
+    validation_checkpoint_version = 2
     if os.path.exists(validation_progress_path):
         try:
             with open(validation_progress_path, "r", encoding="utf-8") as fp:
                 saved_validation = json.load(fp)
-            if isinstance(saved_validation, dict):
-                validation.update(saved_validation)
+            if (
+                isinstance(saved_validation, dict)
+                and saved_validation.get("_checkpoint_version") == validation_checkpoint_version
+            ):
+                validation.update(
+                    {k: v for k, v in saved_validation.items() if k != "_checkpoint_version"}
+                )
                 print(f"VALIDATION_PARTIAL_RESUME={len(validation)}", flush=True)
+            else:
+                print(
+                    "VALIDATION_PARTIAL_INVALIDATED="
+                    f"expected:{validation_checkpoint_version}",
+                    flush=True,
+                )
         except (OSError, ValueError, TypeError):
             print("VALIDATION_PARTIAL_RESUME=0", flush=True)
     holdout_report = results
@@ -93,7 +105,11 @@ try:
             ],
         }
         with open(validation_progress_path, "w", encoding="utf-8") as fp:
-            json.dump(validation, fp, default=str)
+            json.dump(
+                {"_checkpoint_version": validation_checkpoint_version, **validation},
+                fp,
+                default=str,
+            )
         print(f"ROBUSTNESS_WF_DONE={hypothesis} SECONDS={time.time() - started:.1f}", flush=True)
 
     approved = []
