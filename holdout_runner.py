@@ -20,13 +20,17 @@ try:
     print(f"DATA_ROWS={len(df)} FETCH_SECONDS={time.time() - started:.1f}", flush=True)
 
     holdout_ratio = float(os.getenv("HOLDOUT_RATIO", "0.10"))
-    results = independent_holdout(df, holdout_ratio=holdout_ratio, checkpoint_path="/data/holdout_checkpoint.json")
+    checkpoint_dir = os.getenv("FARMANDEHAI_CHECKPOINT_DIR", "artifacts/checkpoints")
+    os.makedirs(checkpoint_dir, exist_ok=True)
+    results = independent_holdout(
+        df,
+        holdout_ratio=holdout_ratio,
+        checkpoint_path=os.path.join(checkpoint_dir, "holdout_checkpoint.json"),
+    )
     for hypothesis, result in results.items():
         print(f"FORWARD_HOLDOUT={hypothesis}:{json.dumps(result, default=str)}", flush=True)
     print("FARMANDEHAI_FORWARD_HOLDOUT_DONE", flush=True)
 
-    checkpoint_dir = os.getenv("FARMANDEHAI_CHECKPOINT_DIR", "/data/checkpoints")
-    os.makedirs(checkpoint_dir, exist_ok=True)
     validation = {}
     validation_progress_path = os.path.join(checkpoint_dir, "validation_partial.json")
     validation_checkpoint_version = 2
