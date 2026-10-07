@@ -11,6 +11,7 @@ concurrency:
 
 permissions:
   contents: write
+  actions: write
 
 jobs:
   build:
@@ -44,6 +45,17 @@ jobs:
         run: python agents/autonomous_builder.py
       - name: Push tested changes
         run: git push origin HEAD:main
+      - name: Trigger CI
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          curl --fail-with-body -L \
+            -X POST \
+            -H "Accept: application/vnd.github+json" \
+            -H "Authorization: Bearer $GH_TOKEN" \
+            -H "X-GitHub-Api-Version: 2022-11-28" \
+            https://api.github.com/repos/${{ github.repository }}/actions/workflows/ci.yml/dispatches \
+            -d '{"ref":"main"}'
       - name: Upload builder state
         if: always()
         uses: actions/upload-artifact@v4
