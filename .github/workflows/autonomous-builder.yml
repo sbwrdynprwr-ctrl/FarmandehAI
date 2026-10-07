@@ -1,0 +1,53 @@
+name: FarmandehAI Autonomous Builder
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "17,47 * * * *"
+
+concurrency:
+  group: farmandehai-autonomous-builder
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    env:
+      PAPER: "true"
+      LIVE: "false"
+      REAL: "false"
+      BUILDER_MODEL: "gpt-6-luna"
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r requirements.txt
+          python -m pip install openai
+      - name: Safety preflight
+        run: |
+          test "$PAPER" = "true"
+          test "$LIVE" = "false"
+          test "$REAL" = "false"
+      - name: Autonomous build cycle
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+        run: python agents/autonomous_builder.py
+      - name: Push tested changes
+        run: git push origin HEAD:main
+      - name: Upload builder state
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: autonomous-builder-state-${{ github.run_id }}
+          path: artifacts/autonomous_builder_state.json
+          if-no-files-found: ignore
