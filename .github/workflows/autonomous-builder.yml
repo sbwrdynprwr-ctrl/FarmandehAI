@@ -2,6 +2,9 @@ name: FarmandehAI Autonomous Builder
 
 on:
   workflow_dispatch:
+  push:
+    branches:
+      - main
   schedule:
     - cron: "17,47 * * * *"
 
@@ -15,6 +18,7 @@ permissions:
 
 jobs:
   build:
+    if: github.event_name != 'push' || !startsWith(github.event.head_commit.message, 'chore(agent): autonomous safe improvement')
     runs-on: ubuntu-latest
     timeout-minutes: 25
     env:
@@ -39,6 +43,14 @@ jobs:
           test "$PAPER" = "true"
           test "$LIVE" = "false"
           test "$REAL" = "false"
+      - name: OpenAI credential preflight
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+        run: |
+          test -n "$OPENAI_API_KEY" || {
+            echo "OPENAI_API_KEY GitHub Actions secret is missing."
+            exit 1
+          }
       - name: Autonomous build cycle
         env:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
