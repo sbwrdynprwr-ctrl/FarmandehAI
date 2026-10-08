@@ -4,9 +4,10 @@ from backtest.research import _load_wf_checkpoint, _save_wf_checkpoint
 def test_walk_forward_checkpoint_round_trip(tmp_path):
     path = tmp_path / "wf.json"
     payload = {
-        "schema": 10,
+        "schema": 11,
         "hypothesis": "mean_reversion_v2",
         "df_len": 1000,
+        "data_fingerprint": "data-v1",
         "folds": 4,
         "train_ratio": 0.5,
         "selection_spread": 0.00015,
@@ -15,14 +16,14 @@ def test_walk_forward_checkpoint_round_trip(tmp_path):
         ],
     }
     _save_wf_checkpoint(str(path), payload)
-    restored = _load_wf_checkpoint(str(path), "mean_reversion_v2", 1000, 4, 0.5, selection_spread=0.00015)
+    restored = _load_wf_checkpoint(str(path), "mean_reversion_v2", 1000, 4, 0.5, data_fingerprint="data-v1", selection_spread=0.00015)
     assert restored == payload
 
 
 def test_walk_forward_checkpoint_rejects_stale_shape(tmp_path):
     path = tmp_path / "wf.json"
     payload = {
-        "schema": 1,
+        "schema": 11,
         "hypothesis": "mean_reversion_v2",
         "df_len": 1000,
         "folds": 4,
@@ -30,13 +31,13 @@ def test_walk_forward_checkpoint_rejects_stale_shape(tmp_path):
         "completed_folds": [],
     }
     _save_wf_checkpoint(str(path), payload)
-    assert _load_wf_checkpoint(str(path), "mean_reversion_v2", 1001, 4, 0.5) == {}
-    assert _load_wf_checkpoint(str(path), "mean_reversion_rr", 1000, 4, 0.5) == {}
+    assert _load_wf_checkpoint(str(path), "mean_reversion_v2", 1001, 4, 0.5, data_fingerprint="data-v1") == {}
+    assert _load_wf_checkpoint(str(path), "mean_reversion_rr", 1000, 4, 0.5, data_fingerprint="data-v1") == {}
 
 def test_walk_forward_checkpoint_rejects_stale_selection_spread(tmp_path):
     path = tmp_path / "wf.json"
     payload = {
-        "schema": 4,
+        "schema": 11,
         "hypothesis": "mean_reversion_v2",
         "df_len": 1000,
         "folds": 4,
@@ -46,5 +47,24 @@ def test_walk_forward_checkpoint_rejects_stale_selection_spread(tmp_path):
     }
     _save_wf_checkpoint(str(path), payload)
     assert _load_wf_checkpoint(
-        str(path), "mean_reversion_v2", 1000, 4, 0.5, selection_spread=0.00015
+        str(path), "mean_reversion_v2", 1000, 4, 0.5, data_fingerprint="data-v1", selection_spread=0.00015
+    ) == {}
+
+
+def test_walk_forward_checkpoint_rejects_changed_market_data(tmp_path):
+    path = tmp_path / "wf.json"
+    payload = {
+        "schema": 11,
+        "hypothesis": "mean_reversion_v2",
+        "df_len": 1000,
+        "data_fingerprint": "data-v1",
+        "folds": 4,
+        "train_ratio": 0.5,
+        "selection_spread": 0.00005,
+        "completed_folds": [],
+    }
+    _save_wf_checkpoint(str(path), payload)
+    assert _load_wf_checkpoint(
+        str(path), "mean_reversion_v2", 1000, 4, 0.5,
+        data_fingerprint="data-v2", selection_spread=0.00005
     ) == {}
