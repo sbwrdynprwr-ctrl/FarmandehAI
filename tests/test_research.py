@@ -98,8 +98,8 @@ def test_mean_reversion_v2_prefers_active_training_candidates():
 
 def test_cost_robust_mean_reversion_has_training_neighbor_stability_floor():
     source = Path("backtest/research.py").read_text(encoding="utf-8")
-    assert 'neighbor_floor = 0.75 if hypothesis in ("mean_reversion_v2", "mean_reversion_robust") else 0.0' in source
-    assert 'worst_slice_floor = 0.50 if hypothesis in ("mean_reversion_v2", "mean_reversion_robust") else 0.0' in source
+    assert 'neighbor_floor = 0.75 if hypothesis in ("mean_reversion_v2", "mean_reversion_robust") else (0.50 if hypothesis == "mean_reversion_costaware" else 0.0)' in source
+    assert 'worst_slice_floor = 0.50 if hypothesis in ("mean_reversion_v2", "mean_reversion_robust", "mean_reversion_costaware") else 0.0' in source
     assert 'neighbor_positive_rate >= neighbor_floor' in source
     assert 'neighbor_worst_slice_rate >= worst_slice_floor' in source
     assert 'def _training_neighbor_rates(' in source
