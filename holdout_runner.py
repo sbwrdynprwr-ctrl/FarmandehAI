@@ -55,7 +55,7 @@ try:
         except (OSError, ValueError, TypeError):
             print("VALIDATION_PARTIAL_RESUME=0", flush=True)
     holdout_report = results
-    for hypothesis in ("trend_filtered", "trend", "trend_regime", "mean_reversion_v2", "mean_reversion_rr", "mean_reversion_costaware", "mean_reversion_robust", "mean_reversion_regime", "mean_reversion_v3", "mean_reversion", "breakout", "pullback"):
+    for hypothesis in ("trend_filtered", "trend", "trend_regime", "mean_reversion_v2", "mean_reversion_rr", "mean_reversion_costaware", "mean_reversion_robust", "mean_reversion_regime", "mean_reversion_band", "mean_reversion_v3", "mean_reversion", "breakout", "pullback"):
         existing = validation.get(hypothesis)
         if (
             isinstance(existing, dict)
