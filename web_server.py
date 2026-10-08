@@ -28,6 +28,17 @@ def _read_status_file(artifacts_dir: Path) -> dict[str, str]:
 def load_readonly_status(artifacts_dir: Path = ARTIFACTS_DIR) -> dict[str, Any]:
     """Expose only non-secret, read-only project status; never expose order controls."""
     values = _read_status_file(artifacts_dir)
+    try:
+        automation = json.loads((artifacts_dir / "automation_state.json").read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        automation = {}
+    # Expose stage names/statuses only; omit arbitrary detail strings and all secrets.
+    raw_stages = automation.get("stages", [])
+    safe_stages = [
+        {"name": str(stage.get("name", "")), "status": str(stage.get("status", ""))}
+        for stage in raw_stages[:12]
+        if isinstance(stage, dict)
+    ] if isinstance(raw_stages, list) else []
     return {
         "application": "FarmandehAI",
         "mode": "PAPER",
@@ -38,6 +49,9 @@ def load_readonly_status(artifacts_dir: Path = ARTIFACTS_DIR) -> dict[str, Any]:
         "project_completion_recorded": values.get("PROJECT COMPLETION", "unknown"),
         "project_remaining_recorded": values.get("PROJECT REMAINING", "unknown"),
         "version": values.get("VERSION", "unknown"),
+        "automation_overall": str(automation.get("overall", "UNKNOWN")),
+        "automation_updated_at": str(automation.get("updated_at", "")),
+        "automation_stages": safe_stages,
         "next_step": values.get("NEXT STEP", "Review validation evidence; keep live trading disabled."),
         "data_note": "This endpoint exposes project status only; it does not provide live market data or execute trades.",
     }
