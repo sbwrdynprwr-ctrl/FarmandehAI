@@ -13,7 +13,7 @@
 <main class="shell">
 <header class="topbar">
  <div class="brand"><div class="mark">ف</div><div><h1>فرمانده <span class="green">AI</span></h1><p>مرکز فرماندهی هوشمند · بازی سه‌بعدی + شبیه‌ساز معامله‌گری</p></div></div>
- <div class="top-actions"><span class="pill live">حالت آزمایشی (PAPER)</span><span class="pill">اتصال هسته: دمو مستقل</span><button id="runBtn" class="btn">▶ اجرای شبیه‌سازی</button></div>
+ <div class="top-actions"><span class="pill live">حالت آزمایشی (PAPER)</span><span id="connectionBadge" class="pill">اتصال هسته: در حال بررسی</span><button id="runBtn" class="btn">▶ اجرای شبیه‌سازی</button></div>
 </header>
 <div class="notice"><strong>قفل ایمنی فعال</strong><span>این صفحه فقط شبیه‌سازی محلی است؛ به کارگزار یا صرافی متصل نیست و هیچ سفارش واقعی ارسال نمی‌کند. داده‌های بازار و موجودی این نمایش، آزمایشی هستند.</span></div>
 <nav class="nav" aria-label="بخش‌های فرماندهی"><button class="active" data-view="command">مرکز فرماندهی</button><button data-view="market">بازار شبیه‌سازی</button><button data-view="agents">ایجنت‌ها</button><button data-view="ledger">دفتر معاملات آزمایشی</button></nav>
@@ -44,7 +44,7 @@
    <div class="agent"><div class="avatar">د</div><div class="agent-info"><strong>نگهبان داده</strong><small>کیفیت داده · کندل بسته</small></div><span class="state wait">آماده‌باش</span></div>
    <div class="agent"><div class="avatar">ر</div><div class="agent-info"><strong>ناظر ریسک</strong><small>افت سرمایه · هزینه‌ها</small></div><span class="state wait">قفل ایمنی</span></div>
    <div class="agent"><div class="avatar">ف</div><div class="agent-info"><strong>فرمانده تصمیم</strong><small>اجماع · رد سیگنال ضعیف</small></div><span class="state wait">منتظر</span></div>
-  </div><div class="section-note">ایجنت‌های این نسخه نقش‌های نمایشی در رابط هستند. هنوز به موتور معاملاتی Python وصل نشده‌اند.</div></article>
+  </div><div class="section-note">ایجنت‌های این نسخه نقش‌های نمایشی در رابط هستند؛ فقط وضعیت پروژه از API خوانده می‌شود و سفارش ارسال نمی‌شود.</div></article>
   <article class="panel"><div class="panel-head"><h2>وضعیت ایمنی</h2><span class="tag">قفل‌شده</span></div>
    <div class="agents">
     <div class="agent"><div class="agent-info"><strong>Paper Trading</strong><small>معاملات مجازی</small></div><span class="state">فعال</span></div>
@@ -76,7 +76,7 @@ function drawWorld(){const dpr=window.devicePixelRatio||1,w=world.clientWidth||8
 wctx.strokeStyle='#2b7854';wctx.globalAlpha=.32;wctx.lineWidth=1;for(let i=-16;i<=16;i++){wctx.beginPath();wctx.moveTo(cx+i*22,cy-120);wctx.lineTo(cx+i*50,cy+145);wctx.stroke();wctx.beginPath();wctx.moveTo(cx-400,cy+i*10);wctx.lineTo(cx+400,cy+i*10);wctx.stroke()}wctx.globalAlpha=1;
 const t=tick*.025;for(let i=0;i<5;i++){const a=t+i*Math.PI*2/5;const x=cx+Math.cos(a)*(Math.min(w,h)*.24),y=cy+Math.sin(a)*(Math.min(w,h)*.14);wctx.strokeStyle=i===3?'#61dce8':'#4ef0a0';wctx.beginPath();wctx.moveTo(cx,cy);wctx.lineTo(x,y);wctx.stroke();wctx.fillStyle='#06110e';wctx.beginPath();wctx.arc(x,y,13,0,Math.PI*2);wctx.fill();wctx.strokeStyle=i===3?'#61dce8':'#4ef0a0';wctx.lineWidth=2;wctx.stroke();wctx.fillStyle='#e7f8ef';wctx.font='10px Tahoma';wctx.textAlign='center';wctx.fillText(['TREND','VOL','DATA','RISK','CMD'][i],x,y+3)}
 wctx.fillStyle='#06130e';wctx.beginPath();wctx.arc(cx,cy,33,0,Math.PI*2);wctx.fill();wctx.strokeStyle='#4ef0a0';wctx.lineWidth=2;wctx.stroke();wctx.fillStyle='#4ef0a0';wctx.font='bold 14px Tahoma';wctx.textAlign='center';wctx.fillText('AI',cx,cy+5);wctx.beginPath();wctx.arc(cx,cy,43+Math.sin(tick*.12)*4,0,Math.PI*2);wctx.strokeStyle='#4ef0a0';wctx.globalAlpha=.5;wctx.stroke();wctx.globalAlpha=1}
-window.addEventListener('resize',()=>{drawChart();drawWorld()});drawChart();drawWorld();
+window.addEventListener('resize',()=>{drawChart();drawWorld()});drawChart();drawWorld();\nfetch('/api/status',{cache:'no-store'}).then(r=>{if(!r.ok)throw new Error('offline');return r.json()}).then(s=>{const badge=$('connectionBadge');badge.textContent='API خواندنی: متصل';badge.classList.add('live');if(s.validation)$('worldState').textContent=s.validation;if(s.mode!=='PAPER'||s.live_trading!==false||s.real_orders!==false)toast('هشدار: وضعیت ایمنی API با حالت آزمایشی سازگار نیست.');}).catch(()=>{$('connectionBadge').textContent='اتصال هسته: دمو مستقل';});
 })();
 </script>
 <script type="module">
