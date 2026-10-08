@@ -394,8 +394,8 @@ def select_params(
                 ])
                 positive_slices = stability[3]
                 activity_floor = 20 if hypothesis == "mean_reversion_v2" else min_trades
-                neighbor_floor = 0.75 if hypothesis in ("mean_reversion_v2", "mean_reversion_robust") else 0.0
-                worst_slice_floor = 0.50 if hypothesis in ("mean_reversion_v2", "mean_reversion_robust") else 0.0
+                neighbor_floor = 0.75 if hypothesis in ("mean_reversion_v2", "mean_reversion_robust") else (0.50 if hypothesis == "mean_reversion_costaware" else 0.0)
+                worst_slice_floor = 0.50 if hypothesis in ("mean_reversion_v2", "mean_reversion_robust", "mean_reversion_costaware") else 0.0
                 if (
                     tune_m_candidate["trades"] >= activity_floor
                     and gate_m_candidate["total_r"] > 0
