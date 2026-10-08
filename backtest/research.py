@@ -21,7 +21,7 @@ COSTAWARE_SELECTION_SPREAD = 0.00015
 # Keep training neighbor robustness aligned with the final OOS neighbor gate.
 # Candidate profitability can still be selected under the conservative 15bps cost,
 # but neighbor stability itself must be evaluated at the exact 5bps gate spread.
-NEIGHBOR_SELECTION_SPREAD = 0.00005
+NEIGHBOR_SELECTION_SPREAD = 0.00005  # exact spread used by the final neighbor gate
 # Keep the expensive chronological stability pass focused on the strongest
 # training candidates. This changes no OOS data usage: all screening remains
 # inside the training window.
