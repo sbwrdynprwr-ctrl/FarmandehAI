@@ -14,6 +14,7 @@ def test_readonly_status_fails_safe_when_artifact_is_missing(tmp_path):
     assert status["live_trading"] is False
     assert status["real_orders"] is False
     assert status["validation"] == "NOT CONFIRMED"
+    assert status["automation_overall"] == "UNKNOWN"
 
 
 def test_readonly_status_reads_non_secret_project_markers(tmp_path):
@@ -31,6 +32,27 @@ def test_readonly_status_reads_non_secret_project_markers(tmp_path):
     assert status["version"] == "test-version"
     assert status["next_step"] == "Keep testing."
     assert status["real_orders"] is False
+
+
+def test_automation_status_exposes_only_safe_stage_fields(tmp_path):
+    (tmp_path / "automation_state.json").write_text(
+        json.dumps({
+            "overall": "RUNNING",
+            "updated_at": "2026-10-08T12:00:00Z",
+            "stages": [
+                {"name": "tests", "status": "SUCCESS", "detail": "private detail"},
+                {"name": "validation", "status": "RUNNING", "detail": "private detail"},
+            ],
+        }),
+        encoding="utf-8",
+    )
+    status = load_readonly_status(tmp_path)
+    assert status["automation_overall"] == "RUNNING"
+    assert status["automation_stages"] == [
+        {"name": "tests", "status": "SUCCESS"},
+        {"name": "validation", "status": "RUNNING"},
+    ]
+    assert "detail" not in json.dumps(status)
 
 
 def test_http_status_endpoint_is_read_only_and_serves_ui(tmp_path):
