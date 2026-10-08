@@ -14,7 +14,7 @@ def test_command_center_is_persian_rtl_and_has_hybrid_scene():
 def test_ui_explicitly_discloses_simulation_and_unconnected_backend():
     page = HTML.read_text(encoding="utf-8")
     assert "به کارگزار یا صرافی متصل نیست" in page
-    assert "فقط وضعیت خواندنی هسته را نمایش می‌دهد" in page
+    assert "فقط وضعیت پروژه از API خوانده می‌شود" in page
     assert "داده‌های بازار و موجودی این نمایش، آزمایشی هستند" in page
 
 
