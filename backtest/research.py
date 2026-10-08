@@ -548,8 +548,9 @@ def walk_forward_search(df: pd.DataFrame, folds: int = 4, train_ratio: float = 0
     # Align parameter selection with the declared 5bps final execution gate.
     # Higher spreads remain stress tests in downstream robustness sensitivity.
     selection_spread = SELECTION_SPREAD
+    data_fingerprint = _data_fingerprint(df)
     checkpoint = _load_wf_checkpoint(
-        checkpoint_path, hypothesis, n, folds, train_ratio,
+        checkpoint_path, hypothesis, n, folds, train_ratio, data_fingerprint,
         selection_spread=selection_spread,
     )
     saved_folds = {int(x["fold"]): x for x in checkpoint.get("completed_folds", [])}
