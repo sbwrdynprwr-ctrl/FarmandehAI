@@ -415,7 +415,8 @@ def select_params(
                 ):
                     robust_ranked.append(
                         (p, fit_m, stability, slice_metrics, gate_m_candidate,
-                         neighbor_positive_rate, neighbor_worst_slice_rate)
+                         neighbor_positive_rate, neighbor_worst_slice_rate,
+                         stress_neighbor_positive_rate, stress_neighbor_worst_slice_rate)
                     )
             # Fail closed: if no candidate satisfies the complete training
             # robustness contract, do not silently reintroduce a rejected one.
