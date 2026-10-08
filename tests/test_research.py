@@ -3,7 +3,7 @@ import pandas as pd
 
 from backtest.research import independent_holdout, robustness
 from backtest.metrics import metrics
-from backtest.research import parameter_candidates, breakout_candidates, select_params, monte_carlo, _neighbor_params
+from backtest.research import parameter_candidates, breakout_candidates, select_params, monte_carlo, _neighbor_params, _data_fingerprint
 from strategy.strategy import StrategyParams
 
 
@@ -128,8 +128,10 @@ def test_specialized_selection_reports_fail_closed_status():
     source = Path("backtest/research.py").read_text(encoding="utf-8")
     assert '"selection_status": selection_status' in source
     assert 'selection_status = "no_robust_candidate"' in source
-    assert 'payload.get("schema") != 10' in source
-    assert 'saved.get("schema") == 5' in source
+    assert 'payload.get("schema") != 11' in source
+    assert 'saved.get("schema") == 6' in source
+    assert 'payload.get("data_fingerprint") != data_fingerprint' in source
+    assert 'saved.get("data_fingerprint") == data_fingerprint' in source
 
 
 def test_specialized_selection_does_not_preempt_final_five_bps_gate():
@@ -143,3 +145,15 @@ def test_specialized_selection_uses_declared_five_bps_gate():
     source = Path("backtest/research.py").read_text(encoding="utf-8")
     assert "selection_spread = SELECTION_SPREAD" in source
     assert "selection_spread=SELECTION_SPREAD" in source
+
+
+def test_data_fingerprint_changes_when_market_data_changes():
+    original = sample_df(240)
+    changed = original.copy()
+    changed.loc[100, "close"] += 0.001
+    assert _data_fingerprint(original) != _data_fingerprint(changed)
+
+
+def test_data_fingerprint_is_stable_for_identical_market_data():
+    original = sample_df(240)
+    assert _data_fingerprint(original) == _data_fingerprint(original.copy())
