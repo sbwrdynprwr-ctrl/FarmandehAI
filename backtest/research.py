@@ -541,9 +541,9 @@ def walk_forward_search(df: pd.DataFrame, folds: int = 4, train_ratio: float = 0
             print(f"RESEARCH_FOLD_RESUME={fold_no}/{folds} HYPOTHESIS={hypothesis}", flush=True)
         else:
             selected, selection = select_params(train, hypothesis=hypothesis, selection_spread=selection_spread)
-        oos_trades = run_backtest_window(df, selected, oos_start, oos_end)
+        oos_trades = run_backtest_window(df, selected, oos_start, oos_end, spread=selection_spread)
         oos_m = metrics([t.r for t in oos_trades])
-        baseline_trades = run_backtest_window(df, StrategyParams(hypothesis=hypothesis), oos_start, oos_end)
+        baseline_trades = run_backtest_window(df, StrategyParams(hypothesis=hypothesis), oos_start, oos_end, spread=selection_spread)
         baseline_m = metrics([t.r for t in baseline_trades])
         fold_record = {
             "fold": fold_no, "train_rows": len(train), "oos_rows": len(oos),
@@ -613,7 +613,7 @@ def robustness(df: pd.DataFrame, folds_out):
         oos = df.iloc[start:end].reset_index(drop=True)
         p = StrategyParams(**f["params"])
         neighbors = [metrics([t.r for t in run_backtest_window(df, q, start, end, spread=SELECTION_SPREAD)]) for q in _neighbor_params(p)]
-        base = metrics([t.r for t in run_backtest_window(df, p, start, end)])
+        base = metrics([t.r for t in run_backtest_window(df, p, start, end, spread=SELECTION_SPREAD)])
         positive = sum(m["total_r"] > 0 for m in neighbors)
         rows.append({"fold": f["fold"], "selected_oos": base,
                      "neighbor_count": len(neighbors),
@@ -679,7 +679,7 @@ def independent_holdout(df: pd.DataFrame, holdout_ratio: float = 0.20, checkpoin
             # execution gate; higher spreads remain downstream stress tests.
             selection_spread=SELECTION_SPREAD,
         )
-        trades = run_backtest_window(df, selected, holdout_start, n)
+        trades = run_backtest_window(df, selected, holdout_start, n, spread=SELECTION_SPREAD)
         holdout_metrics = metrics([t.r for t in trades])
         print(f"FORWARD_HOLDOUT_HYPOTHESIS_COMPLETE={hypothesis} trades={holdout_metrics['trades']} total_r={holdout_metrics['total_r']}", flush=True)
         results[hypothesis] = {
