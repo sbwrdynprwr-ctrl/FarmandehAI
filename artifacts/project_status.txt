@@ -15,7 +15,11 @@ FINAL HOLDOUT: 19,312 rows (20% chronological holdout)
 VALIDATION GATE: NOT PASSED
 APPROVED STRATEGIES: NONE (approved list was empty)
 FORWARD HOLDOUT NOTE: mean_reversion_v2 recorded +57.12R over 748 trades on its final holdout, but a single positive holdout result is not sufficient; the overall validation gate did not approve any strategy.
+WALK-FORWARD AUDIT: mean_reversion_v2 combined 1,032 trades and +56.81R across four OOS folds, but this does not override the hard gates below.
+MEAN_REVERSION_V2 GATE DETAILS: min_trades=PASS; positive_total_r=PASS; positive_expectancy=PASS; positive_folds=PASS (4/4); neighbor_stability=FAIL (worst fold 0.0, required >=0.50); positive_5bps_sensitivity=FAIL (-88.13R summed across folds); positive_monte_carlo_terminal=PASS; selection_provenance=FAIL (two folds selected no robust candidate).
+MEAN_REVERSION_V2 FOLD NEIGHBOR RATES: F1 36.4%; F2 68.2%; F3 0%; F4 0%. The result is not stable across parameter neighbors and later folds.
+MEAN_REVERSION_V2 SPREAD STRESS: at 5bps, F1 -0.51R; F2 +1.91R; F3 -56.16R; F4 -33.37R. This is the clearest reason not to promote the strategy despite positive aggregate results.
 OTHER HOLDOUT NOTE: trend recorded -166R over 634 trades; trend_regime recorded -23R over 155 trades; trend_filtered recorded -77R over 397 trades.
 RESEARCH SAFETY: No live/real orders were enabled or submitted by this validation run.
 BASELINE CANDIDATE: Already explicitly included before bounded candidate sampling in backtest/research.py; the old next-step note claiming it still needed adding was stale.
-NEXT STEP: Review the latest per-hypothesis walk-forward, spread-sensitivity, neighbor-stability and Monte Carlo reports; investigate why no candidate passes all gates. Any changes must remain paper-only and be tested on a fresh independent holdout.
+NEXT STEP: Investigate fold 3/4 cost sensitivity and parameter-neighbor instability, inspect selection/provenance behavior, then make a narrowly scoped paper-only research change. Re-run all tests and validate on a fresh independent holdout; never tune against the already-consumed final holdout or enable live/real trading based on these results.
