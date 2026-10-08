@@ -1,26 +1,21 @@
-PROJECT COMPLETION: 97%
-PROJECT REMAINING: 3%
-VERSION: v0.2.11-nested-fit-selection
+PROJECT: FarmandehAI
+STATUS UPDATED: 2026-10-09
+VERSION: post-1004-checkpoint-resume
+PROJECT COMPLETION: NOT ESTIMATED
+PROJECT REMAINING: Research validation and paper-only operational verification
 LIVE TRADING: OFF
 REAL ORDER: OFF
 PAPER TRADING: ON
-SAFETY LOCKS: VERIFIED
-TESTS: 14/14 passed on independent Railway test deployment
-CI: GitHub Actions workflow configured; independent Railway test confirms the current suite passes
-RAILWAY RESEARCH DEPLOYMENT: SUCCESS
-RAILWAY RESEARCH DEPLOYMENT ID: ba9af15b-34df-4695-9bc5-3b7e9e4286fc
-DATA: 17,275 GBP/USD 5-minute candles retrieved successfully
-RESEARCH CHANGE: Parameter eligibility and ranking now use FIT-only chronological slices with conservative 0.5-pip selection spread; the training TUNE slice is held out from parameter selection and OOS remains untouched.
-BASELINE WF: 255 trades, 26.67% win rate, -51R, expectancy -0.2000R, PF 0.7273, max DD 56R, max loss streak 14
-TREND OOS COMBINED: 338 trades, 34.02% win rate, -45.5R, expectancy -0.1346R, PF 0.7960, max DD 48R, max loss streak 18
-MEAN_REVERSION OOS COMBINED: 3 trades, 33.33% win rate, approximately 0R; too few trades for validation
-BREAKOUT OOS COMBINED: 294 trades, 36.05% win rate, -9R, expectancy -0.0306R, PF 0.9521, max DD 32.5R, max loss streak 12
-BREAKOUT FOLDS: F1 -18R, F2 +2R, F3 +11R, F4 -4R
-BREAKOUT ROBUSTNESS: neighbor-positive rates 0%, 78.6%, 100%, 7.1%; spread stress materially weakens some folds
-PULLBACK OOS COMBINED: 28 trades, 35.71% win rate, -1.5R, expectancy -0.0536R, PF 0.9167, max DD 6R, max loss streak 6
-PULLBACK FOLDS: F1 -3R, F2 +2R, F3 +2.5R, F4 -3R
-PULLBACK ROBUSTNESS: neighbor-positive rates 0%, 58.3%, 91.7%, 0%
-PULLBACK MONTE CARLO: p50 max DD 7R, p95 11R, max 15.5R, terminal -1.5R
-VALIDATION: NOT CONFIRMED
-RESEARCH CONCLUSION: Removing parameter-selection leakage produced a clean independent OOS run; breakout improved toward breakeven but remains negative overall and unstable across folds, while pullback remains slightly negative and low-sample.
-NEXT STEP: Add the baseline itself as an explicit selection candidate, then rerun independent OOS and cost/robustness checks. Never activate live/real trading without confirmed validation.
+SAFETY: Live/real execution remains disabled
+LATEST RESEARCH RUN: SUCCESS
+LATEST RESEARCH DEPLOYMENT ID: 1128a3f5-a012-4fcf-9daa-19d57f0847c4
+LATEST RESEARCH COMPLETED: 2026-10-08T16:00:58Z
+DATA: 96,559 GBP/USD 5-minute rows loaded across a 365-day research window
+FINAL HOLDOUT: 19,312 rows (20% chronological holdout)
+VALIDATION GATE: NOT PASSED
+APPROVED STRATEGIES: NONE (approved list was empty)
+FORWARD HOLDOUT NOTE: mean_reversion_v2 recorded +57.12R over 748 trades on its final holdout, but a single positive holdout result is not sufficient; the overall validation gate did not approve any strategy.
+OTHER HOLDOUT NOTE: trend recorded -166R over 634 trades; trend_regime recorded -23R over 155 trades; trend_filtered recorded -77R over 397 trades.
+RESEARCH SAFETY: No live/real orders were enabled or submitted by this validation run.
+BASELINE CANDIDATE: Already explicitly included before bounded candidate sampling in backtest/research.py; the old next-step note claiming it still needed adding was stale.
+NEXT STEP: Review the latest per-hypothesis walk-forward, spread-sensitivity, neighbor-stability and Monte Carlo reports; investigate why no candidate passes all gates. Any changes must remain paper-only and be tested on a fresh independent holdout.
