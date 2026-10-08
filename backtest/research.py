@@ -22,6 +22,7 @@ COSTAWARE_SELECTION_SPREAD = 0.00015
 # Candidate profitability can still be selected under the conservative 15bps cost,
 # but neighbor stability itself must be evaluated at the exact 5bps gate spread.
 NEIGHBOR_SELECTION_SPREAD = 0.00005  # exact spread used by the final neighbor gate
+STRESS_NEIGHBOR_SELECTION_SPREAD = 0.00015  # conservative training-only neighbor stress test
 # Keep the expensive chronological stability pass focused on the strongest
 # training candidates. This changes no OOS data usage: all screening remains
 # inside the training window.
@@ -366,7 +367,13 @@ def select_params(
                 neighbor_positive_rate, neighbor_worst_slice_rate = _training_neighbor_rates(
                     fit, p, NEIGHBOR_SELECTION_SPREAD
                 )
-            stable.append((p, fit_m, stability, slice_metrics, neighbor_positive_rate, neighbor_worst_slice_rate))
+                stress_neighbor_positive_rate, stress_neighbor_worst_slice_rate = _training_neighbor_rates(
+                    fit, p, STRESS_NEIGHBOR_SELECTION_SPREAD
+                )
+            else:
+                stress_neighbor_positive_rate, stress_neighbor_worst_slice_rate = 0.0, 0.0
+            stable.append((p, fit_m, stability, slice_metrics, neighbor_positive_rate, neighbor_worst_slice_rate,
+                           stress_neighbor_positive_rate, stress_neighbor_worst_slice_rate))
 
     best = baseline
     best_stability = None
@@ -379,7 +386,7 @@ def select_params(
             # before the blind OOS gate gets to judge it. This avoids a training
             # prefilter becoming stricter than the declared final execution test.
             robust_ranked = []
-            for p, fit_m, stability, slice_metrics, neighbor_positive_rate, neighbor_worst_slice_rate in stable:
+            for p, fit_m, stability, slice_metrics, neighbor_positive_rate, neighbor_worst_slice_rate, stress_neighbor_positive_rate, stress_neighbor_worst_slice_rate in stable:
                 tune_x = indicators(tune, p)
                 tune_m_candidate = metrics([
                     t.r for t in _run_backtest_indicators(tune_x, p, spread=selection_spread)
@@ -396,12 +403,15 @@ def select_params(
                 activity_floor = 20 if hypothesis == "mean_reversion_v2" else min_trades
                 neighbor_floor = 0.75 if hypothesis in ("mean_reversion_v2", "mean_reversion_robust") else (0.50 if hypothesis == "mean_reversion_costaware" else 0.0)
                 worst_slice_floor = 0.50 if hypothesis in ("mean_reversion_v2", "mean_reversion_robust", "mean_reversion_costaware") else 0.0
+                stress_neighbor_floor = 0.50 if hypothesis in ("mean_reversion_v2", "mean_reversion_robust", "mean_reversion_costaware") else 0.0
                 if (
                     tune_m_candidate["trades"] >= activity_floor
                     and gate_m_candidate["total_r"] > 0
                     and positive_slices >= 2
                     and neighbor_positive_rate >= neighbor_floor
                     and neighbor_worst_slice_rate >= worst_slice_floor
+                    and stress_neighbor_positive_rate >= stress_neighbor_floor
+                    and stress_neighbor_worst_slice_rate >= stress_neighbor_floor
                 ):
                     robust_ranked.append(
                         (p, fit_m, stability, slice_metrics, gate_m_candidate,
@@ -421,7 +431,7 @@ def select_params(
                     # Prefer performance at the exact 5bps final-gate
                     # spread, then neighbor stability, while retaining 15bps
                     # profitability as the eligibility constraint above.
-                    x[4]["expectancy"], x[5], x[6], x[2][1], x[2][0], x[2][2],
+                    x[4]["expectancy"], x[5], x[6], x[7], x[8], x[2][1], x[2][0], x[2][2],
                     -x[4]["max_drawdown"], x[4]["trades"]
                 ),
                 reverse=True,
