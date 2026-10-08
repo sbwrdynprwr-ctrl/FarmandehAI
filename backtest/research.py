@@ -296,12 +296,20 @@ def select_params(
               else MAX_SEARCH_CANDIDATES)
     )
     raw_candidates = _candidates_for(hypothesis)
+    baseline = StrategyParams(hypothesis=hypothesis)
+    # Include the declared baseline before bounded sampling so the baseline
+    # cannot disappear from an oversized candidate grid.
+    raw_candidates = [baseline] + [p for p in raw_candidates if p != baseline]
     if len(raw_candidates) <= candidate_limit:
         candidates = raw_candidates
     else:
-        idx = np.linspace(0, len(raw_candidates) - 1, candidate_limit, dtype=int)
-        candidates = [raw_candidates[i] for i in idx]
-    baseline = StrategyParams(hypothesis=hypothesis)
+        remaining = raw_candidates[1:]
+        budget = max(0, candidate_limit - 1)
+        if budget:
+            idx = np.linspace(0, len(remaining) - 1, budget, dtype=int)
+            candidates = [baseline] + [remaining[i] for i in idx]
+        else:
+            candidates = [baseline]
     ranked = []
     indicator_cache = {}
 
@@ -310,11 +318,6 @@ def select_params(
     # candidate grid exceeds the search budget. This lets the selector compare
     # the tuned family against the untouched baseline instead of silently
     # falling back to it only after all candidates have been rejected.
-    raw_candidates = [baseline] + [
-        p for p in raw_candidates
-        if p != baseline
-    ]
-
     # Stage 1: cheap fit screening for every candidate. Indicators are cached
     # by period parameters so repeated combinations reuse rolling calculations.
     for p in candidates:
