@@ -1,4 +1,5 @@
 name: FarmandehAI Research
+# Research runs are explicitly requested with [run-research] commits.
 
 on:
   workflow_dispatch:
