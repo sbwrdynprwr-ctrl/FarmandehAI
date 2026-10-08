@@ -64,3 +64,13 @@ Research trigger: fit-positive mean-reversion selection validation 2026-10-05T09
 <!-- [run-research] resume validation from latest main -->
 
 <!-- [run-research] retry after CI checkpoint-path fix -->
+
+## Command center UI prototype
+
+A Persian RTL hybrid game/trading command-center prototype is in `web/index.html`. It uses local-only simulated prices and a visual 3D scene; it is not connected to a broker and cannot place orders. To serve it with the read-only status API locally:
+
+```bash
+python web_server.py
+```
+
+Then open `http://localhost:8080`. The `/api/status` endpoint exposes only non-secret project status and always reports `PAPER` enabled with live trading and real orders disabled. This server is not the current Railway startup command; deployment wiring should be reviewed separately before publishing it.
