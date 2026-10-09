@@ -2,9 +2,9 @@ name: FarmandehAI CI
 
 on:
   push:
-    branches: ["main"]
+    branches: ["main", "fix/validation-status-2026-10-09"]
   pull_request:
-    branches: ["main"]
+    branches: ["main", "fix/validation-status-2026-10-09"]
 
 jobs:
   test:
