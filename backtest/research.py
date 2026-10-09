@@ -652,7 +652,33 @@ def robustness(df: pd.DataFrame, folds_out):
         for spread in (0.0, 0.00005, 0.00010, 0.00015):
             spread_results.append({"fold": f["fold"], "spread": spread,
                                    "metrics": metrics([t.r for t in run_backtest_window(df, p, start, end, spread=spread)])})
-    return {"folds": rows, "spread_sensitivity": spread_results}
+    # Diagnostic only: quantify how parameter-neighbor outcomes change as costs rise.
+    # This does not alter candidate selection or any promotion gate.
+    neighbor_spread_sensitivity = []
+    for f in folds_out:
+        start = first_oos + (f["fold"] - 1) * oos_size
+        end = first_oos + f["fold"] * oos_size
+        if f["fold"] == len(folds_out):
+            end = len(df)
+        p = StrategyParams(**f["params"])
+        neighbors = _neighbor_params(p)
+        for spread in (0.0, 0.00005, 0.00010, 0.00015):
+            neighbor_metrics = [
+                metrics([t.r for t in run_backtest_window(df, q, start, end, spread=spread)])
+                for q in neighbors
+            ]
+            positive_count = sum(m["total_r"] > 0 for m in neighbor_metrics)
+            neighbor_spread_sensitivity.append({
+                "fold": f["fold"],
+                "spread": spread,
+                "neighbor_count": len(neighbor_metrics),
+                "neighbor_positive_count": positive_count,
+                "neighbor_positive_rate": positive_count / len(neighbor_metrics) if neighbor_metrics else 0.0,
+                "neighbor_mean_total_r": float(np.mean([m["total_r"] for m in neighbor_metrics])) if neighbor_metrics else 0.0,
+                "neighbor_worst_total_r": float(min((m["total_r"] for m in neighbor_metrics), default=0.0)),
+            })
+    return {"folds": rows, "spread_sensitivity": spread_results,
+            "neighbor_spread_sensitivity": neighbor_spread_sensitivity}
 
 
 def monte_carlo(rs: Iterable[float], simulations: int = 1000, seed: int = 42):
