@@ -165,3 +165,54 @@ def test_robustness_reports_neighbor_spread_sensitivity_without_changing_gates()
     assert '"neighbor_mean_total_r"' in source
     assert '"neighbor_worst_total_r"' in source
     assert 'for spread in (0.0, 0.00005, 0.00010, 0.00015):' in source
+
+
+def test_robustness_neighbor_spread_sensitivity_calculates_each_fold_and_cost(monkeypatch):
+    import backtest.research as research
+
+    df = sample_df(240)
+    base = StrategyParams(hypothesis="trend_filtered")
+    neighbors = [
+        StrategyParams(hypothesis="trend_filtered", ema_fast=15),
+        StrategyParams(hypothesis="trend_filtered", ema_fast=25),
+    ]
+    calls = []
+
+    class Trade:
+        def __init__(self, r):
+            self.r = r
+
+    def fake_backtest(data, params, start, end, spread):
+        calls.append((params, start, end, spread))
+        # One neighbor remains profitable at zero cost, but turns negative as
+        # costs rise; the other is negative at every cost level.
+        value = (1.0 if params.ema_fast == 15 else -1.0) - spread * 20000
+        return [Trade(value)]
+
+    def fake_metrics(rs):
+        total = float(sum(rs))
+        return {"total_r": total, "trades": len(rs)}
+
+    monkeypatch.setattr(research, "run_backtest_window", fake_backtest)
+    monkeypatch.setattr(research, "metrics", fake_metrics)
+    monkeypatch.setattr(research, "_neighbor_params", lambda params: neighbors)
+
+    result = research.robustness(df, [
+        {"fold": 1, "params": base.__dict__},
+        {"fold": 2, "params": base.__dict__},
+    ])
+
+    rows = result["neighbor_spread_sensitivity"]
+    assert len(rows) == 2 * 4
+    assert [r["spread"] for r in rows[:4]] == [0.0, 0.00005, 0.00010, 0.00015]
+    zero_cost = rows[0]
+    assert zero_cost["neighbor_count"] == 2
+    assert zero_cost["neighbor_positive_count"] == 1
+    assert zero_cost["neighbor_positive_rate"] == 0.5
+    assert zero_cost["neighbor_mean_total_r"] == 0.0
+    assert zero_cost["neighbor_worst_total_r"] == -1.0
+    highest_cost = rows[3]
+    assert highest_cost["neighbor_positive_count"] == 0
+    assert highest_cost["neighbor_mean_total_r"] < 0.0
+    # Two folds: selected candidate + two neighbors at four costs per fold.
+    assert len(calls) == 2 * (1 + 4 * len(neighbors) + 4 * len(neighbors))
