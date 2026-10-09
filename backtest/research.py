@@ -4,6 +4,7 @@ import itertools
 import random
 import json
 import os
+import hashlib
 from dataclasses import asdict
 from typing import Iterable
 
@@ -495,13 +496,24 @@ def select_params(
     }
 
 
-def _load_wf_checkpoint(path, hypothesis, df_len, folds, train_ratio, selection_spread=SELECTION_SPREAD):
+def _data_fingerprint(df: pd.DataFrame) -> str:
+    """Stable fingerprint of market data used to invalidate stale checkpoints."""
+    columns = ("timestamp", "open", "high", "low", "close")
+    missing = [name for name in columns if name not in df.columns]
+    if missing:
+        raise ValueError(f"market data missing fingerprint columns: {missing}")
+    hashed = pd.util.hash_pandas_object(df[list(columns)], index=True).values.tobytes()
+    return hashlib.sha256(hashed).hexdigest()
+
+
+def _load_wf_checkpoint(path, hypothesis, df_len, folds, train_ratio, data_fingerprint, selection_spread=SELECTION_SPREAD):
     if not path or not os.path.exists(path):
         return {}
     try:
         with open(path, "r", encoding="utf-8") as fp:
             payload = json.load(fp)
-        if payload.get("schema") != 10 or payload.get("hypothesis") != hypothesis:
+        if (payload.get("schema") != 11 or payload.get("hypothesis") != hypothesis
+                or payload.get("data_fingerprint") != data_fingerprint):
             return {}
         if (payload.get("df_len") != df_len
                 or payload.get("folds") != folds
@@ -537,8 +549,9 @@ def walk_forward_search(df: pd.DataFrame, folds: int = 4, train_ratio: float = 0
     # Align parameter selection with the declared 5bps final execution gate.
     # Higher spreads remain stress tests in downstream robustness sensitivity.
     selection_spread = SELECTION_SPREAD
+    data_fingerprint = _data_fingerprint(df)
     checkpoint = _load_wf_checkpoint(
-        checkpoint_path, hypothesis, n, folds, train_ratio,
+        checkpoint_path, hypothesis, n, folds, train_ratio, data_fingerprint,
         selection_spread=selection_spread,
     )
     saved_folds = {int(x["fold"]): x for x in checkpoint.get("completed_folds", [])}
@@ -569,7 +582,8 @@ def walk_forward_search(df: pd.DataFrame, folds: int = 4, train_ratio: float = 0
         folds_out.append({**fold_record, "trades": oos_trades})
         combined.extend(oos_trades)
         checkpoint_payload = {
-            "schema": 10, "hypothesis": hypothesis, "df_len": n,
+            "schema": 11, "hypothesis": hypothesis, "df_len": n,
+            "data_fingerprint": data_fingerprint,
             "selection_spread": selection_spread,
             "folds": folds, "train_ratio": train_ratio,
             "completed_folds": [
@@ -670,13 +684,15 @@ def independent_holdout(df: pd.DataFrame, holdout_ratio: float = 0.20, checkpoin
     if holdout_start < 100 or n - holdout_start < 50:
         raise ValueError("dataset is too small for independent holdout")
     results = {}
+    data_fingerprint = _data_fingerprint(df)
     # Persist each completed holdout hypothesis so an interrupted Railway
     # container resumes instead of repeating expensive training-only selection.
     if checkpoint_path and os.path.exists(checkpoint_path):
         try:
             with open(checkpoint_path, "r", encoding="utf-8") as fp:
                 saved = json.load(fp)
-            if (saved.get("schema") == 5 and saved.get("df_len") == n
+            if (saved.get("schema") == 6 and saved.get("df_len") == n
+                    and saved.get("data_fingerprint") == data_fingerprint
                     and float(saved.get("holdout_ratio")) == float(holdout_ratio)):
                 results.update(saved.get("completed", {}))
         except (OSError, ValueError, TypeError):
@@ -708,7 +724,8 @@ def independent_holdout(df: pd.DataFrame, holdout_ratio: float = 0.20, checkpoin
         }
         if checkpoint_path:
             payload = {
-                "schema": 5, "df_len": n, "holdout_ratio": holdout_ratio,
+                "schema": 6, "df_len": n, "holdout_ratio": holdout_ratio,
+                "data_fingerprint": data_fingerprint,
                 "completed": results,
             }
             _save_wf_checkpoint(checkpoint_path, payload)
