@@ -157,3 +157,11 @@ def test_data_fingerprint_changes_when_market_data_changes():
 def test_data_fingerprint_is_stable_for_identical_market_data():
     original = sample_df(240)
     assert _data_fingerprint(original) == _data_fingerprint(original.copy())
+
+
+def test_robustness_reports_neighbor_spread_sensitivity_without_changing_gates():
+    source = Path("backtest/research.py").read_text(encoding="utf-8")
+    assert '"neighbor_spread_sensitivity": neighbor_spread_sensitivity' in source
+    assert '"neighbor_mean_total_r"' in source
+    assert '"neighbor_worst_total_r"' in source
+    assert 'for spread in (0.0, 0.00005, 0.00010, 0.00015):' in source
