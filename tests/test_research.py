@@ -215,4 +215,4 @@ def test_robustness_neighbor_spread_sensitivity_calculates_each_fold_and_cost(mo
     assert highest_cost["neighbor_positive_count"] == 0
     assert highest_cost["neighbor_mean_total_r"] < 0.0
     # Two folds: selected candidate + two neighbors at four costs per fold.
-    assert len(calls) == 2 * (1 + 4 * len(neighbors) + 4 * len(neighbors))
+    assert len(calls) == 2 * (1 + 4 + len(neighbors) + 4 * len(neighbors))
