@@ -100,8 +100,15 @@ try:
             fold_no = int(fold["fold"])
             oos_start = first_oos + (fold_no - 1) * oos_size
             oos_end = first_oos + fold_no * oos_size if fold_no < len(folds) else len(df)
+            # run_backtest_window starts signal evaluation at oos_start - 1
+            # so that a signal on the preceding bar may enter at the first OOS
+            # bar. Trade.timestamp records that signal bar (ts[i]), therefore
+            # align A/B slots to the exact signal timestamps used by the engine.
+            # The half-open slice has the same length as this fold's OOS window
+            # and adjacent folds remain non-overlapping.
             evaluation_timestamps.extend(
-                str(value) for value in df["timestamp"].to_numpy()[oos_start:oos_end]
+                str(value)
+                for value in df["timestamp"].to_numpy()[oos_start - 1:oos_end - 1]
             )
             baseline_trades.extend(fold["baseline_trades"])
             candidate_trades.extend(fold["trades"])
