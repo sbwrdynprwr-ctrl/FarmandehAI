@@ -566,14 +566,14 @@ def walk_forward_search(df: pd.DataFrame, folds: int = 4, train_ratio: float = 0
             "params": asdict(selected), "selection": selection,
             "oos_metrics": oos_m, "baseline_oos_metrics": baseline_m,
         }
-        folds_out.append({**fold_record, "trades": oos_trades})
+        folds_out.append({**fold_record, "trades": oos_trades, "baseline_trades": baseline_trades})
         combined.extend(oos_trades)
         checkpoint_payload = {
             "schema": 10, "hypothesis": hypothesis, "df_len": n,
             "selection_spread": selection_spread,
             "folds": folds, "train_ratio": train_ratio,
             "completed_folds": [
-                {k: v for k, v in x.items() if k != "trades"} for x in folds_out
+                {k: v for k, v in x.items() if k not in {"trades", "baseline_trades"}} for x in folds_out
             ],
         }
         _save_wf_checkpoint(checkpoint_path, checkpoint_payload)
