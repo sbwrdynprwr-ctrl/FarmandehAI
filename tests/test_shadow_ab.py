@@ -1,3 +1,4 @@
+import numpy as np
 import pytest
 
 from evaluation.shadow_ab import compare_ab, evaluate_shadow_signal
@@ -35,8 +36,8 @@ def test_shadow_signal_rejects_first_on_risk_or_spread_failure():
 
 
 def test_hold_and_invalid_signals_are_not_eligible():
-    hold = evaluate_shadow_signal(candidate="x", signal="HOLD", timestamp="t", risk_ok=True)
-    invalid = evaluate_shadow_signal(candidate="x", signal="BUY NOW", timestamp="t", risk_ok=True)
+    hold = evaluate_shadow_signal(candidate="x", signal="HOLD", timestamp="2026-10-16T12:00:00Z", risk_ok=True)
+    invalid = evaluate_shadow_signal(candidate="x", signal="BUY NOW", timestamp="2026-10-16T12:00:00Z", risk_ok=True)
     assert hold["eligible_for_shadow_review"] is False
     assert invalid["eligible_for_shadow_review"] is False
     assert "invalid_signal" in invalid["reasons"]
@@ -70,9 +71,9 @@ def test_timestamp_aligned_ab_uses_zero_for_no_trade_slots():
     from evaluation.shadow_ab import compare_ab_by_timestamp
 
     result = compare_ab_by_timestamp(
-        ["t1", "t2", "t3"],
-        [{"timestamp": "t1", "r": 1.0}],
-        [{"timestamp": "t1", "r": 1.0}, {"timestamp": "t3", "r": 1.0}],
+        ["2026-10-16T12:00:00Z", "2026-10-16T12:05:00Z", "2026-10-16T12:10:00Z"],
+        [{"timestamp": "2026-10-16T12:00:00Z", "r": 1.0}],
+        [{"timestamp": "2026-10-16T12:00:00Z", "r": 1.0}, {"timestamp": "2026-10-16T12:10:00Z", "r": 1.0}],
         min_samples=3,
     )
     assert result["sample_unit"] == "evaluation_timestamp"
@@ -82,16 +83,30 @@ def test_timestamp_aligned_ab_uses_zero_for_no_trade_slots():
     assert result["execution_enabled"] is False
 
 
+def test_timestamp_alignment_normalizes_numpy_and_iso_utc_forms():
+    from evaluation.shadow_ab import compare_ab_by_timestamp
+
+    slot = np.datetime64("2026-10-16T12:00:00.000000000")
+    result = compare_ab_by_timestamp(
+        [slot],
+        [{"timestamp": "2026-10-16T12:00:00Z", "r": 1.0}],
+        [{"timestamp": "2026-10-16 13:00:00+01:00", "r": 2.0}],
+        min_samples=1,
+    )
+    assert result["baseline"]["total_r"] == pytest.approx(1.0)
+    assert result["candidate"]["total_r"] == pytest.approx(2.0)
+
+
 def test_timestamp_aligned_ab_fails_closed_on_bad_alignment():
     from evaluation.shadow_ab import compare_ab_by_timestamp
 
     with pytest.raises(ValueError, match="unique"):
-        compare_ab_by_timestamp(["t1", "t1"], [], [])
+        compare_ab_by_timestamp(["2026-10-16T12:00:00Z", "2026-10-16 13:00:00+01:00"], [], [])
     with pytest.raises(ValueError, match="outside"):
-        compare_ab_by_timestamp(["t1"], [{"timestamp": "t2", "r": 1.0}], [])
+        compare_ab_by_timestamp(["2026-10-16T12:00:00Z"], [{"timestamp": "2026-10-16T12:05:00Z", "r": 1.0}], [])
     with pytest.raises(ValueError, match="at most one"):
         compare_ab_by_timestamp(
-            ["t1"],
-            [{"timestamp": "t1", "r": 1.0}, {"timestamp": "t1", "r": -1.0}],
+            ["2026-10-16T12:00:00Z"],
+            [{"timestamp": "2026-10-16T12:00:00Z", "r": 1.0}, {"timestamp": "2026-10-16 13:00:00+01:00", "r": -1.0}],
             [],
         )
