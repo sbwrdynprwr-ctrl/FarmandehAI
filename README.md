@@ -64,3 +64,6 @@ Research trigger: fit-positive mean-reversion selection validation 2026-10-05T09
 <!-- [run-research] resume validation from latest main -->
 
 <!-- [run-research] retry after CI checkpoint-path fix -->
+
+
+<!-- [run-research] resume validation from current main checkpoint 2026-10-16 -->
