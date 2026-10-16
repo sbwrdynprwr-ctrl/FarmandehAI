@@ -64,3 +64,34 @@ def test_ab_requires_paired_finite_data():
         compare_ab([1.0], [1.0, 2.0])
     with pytest.raises(ValueError, match="finite"):
         compare_ab([float("nan")], [1.0])
+
+
+def test_timestamp_aligned_ab_uses_zero_for_no_trade_slots():
+    from evaluation.shadow_ab import compare_ab_by_timestamp
+
+    result = compare_ab_by_timestamp(
+        ["t1", "t2", "t3"],
+        [{"timestamp": "t1", "r": 1.0}],
+        [{"timestamp": "t1", "r": 1.0}, {"timestamp": "t3", "r": 1.0}],
+        min_samples=3,
+    )
+    assert result["sample_unit"] == "evaluation_timestamp"
+    assert result["baseline"]["total_r"] == pytest.approx(1.0)
+    assert result["candidate"]["total_r"] == pytest.approx(2.0)
+    assert result["candidate"]["expectancy_r"] == pytest.approx(2 / 3)
+    assert result["execution_enabled"] is False
+
+
+def test_timestamp_aligned_ab_fails_closed_on_bad_alignment():
+    from evaluation.shadow_ab import compare_ab_by_timestamp
+
+    with pytest.raises(ValueError, match="unique"):
+        compare_ab_by_timestamp(["t1", "t1"], [], [])
+    with pytest.raises(ValueError, match="outside"):
+        compare_ab_by_timestamp(["t1"], [{"timestamp": "t2", "r": 1.0}], [])
+    with pytest.raises(ValueError, match="at most one"):
+        compare_ab_by_timestamp(
+            ["t1"],
+            [{"timestamp": "t1", "r": 1.0}, {"timestamp": "t1", "r": -1.0}],
+            [],
+        )
