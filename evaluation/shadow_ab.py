@@ -9,8 +9,30 @@ from __future__ import annotations
 from math import isfinite
 from typing import Iterable
 
+import pandas as pd
+
 
 VALID_SIGNALS = {"BUY", "SELL", "HOLD"}
+
+
+def _timestamp_key(value: object) -> str:
+    """Canonicalize timestamp representations before pairing A/B outcomes.
+
+    Pandas Timestamp, numpy datetime64, and ISO strings can stringify differently
+    even when they identify the same UTC bar. Normalize them to a UTC ISO key.
+    Naive timestamps are treated as UTC because research data is validated UTC.
+    """
+    try:
+        timestamp = pd.Timestamp(value)
+    except (TypeError, ValueError, OverflowError) as exc:
+        raise ValueError("invalid evaluation timestamp") from exc
+    if pd.isna(timestamp):
+        raise ValueError("invalid evaluation timestamp")
+    if timestamp.tzinfo is None:
+        timestamp = timestamp.tz_localize("UTC")
+    else:
+        timestamp = timestamp.tz_convert("UTC")
+    return timestamp.isoformat()
 
 
 def evaluate_shadow_signal(
@@ -118,7 +140,7 @@ def compare_ab(
 
 
 def compare_ab_by_timestamp(
-    evaluation_timestamps: Iterable[str],
+    evaluation_timestamps: Iterable[object],
     baseline_trades: Iterable[object],
     candidate_trades: Iterable[object],
     *,
@@ -132,7 +154,7 @@ def compare_ab_by_timestamp(
     slots, duplicate trades per slot, non-finite returns, and trades outside
     the supplied window fail closed. Expectancy is per slot, not per trade.
     """
-    slots = [str(value) for value in evaluation_timestamps]
+    slots = [_timestamp_key(value) for value in evaluation_timestamps]
     if not slots:
         raise ValueError("evaluation_timestamps must not be empty")
     if len(set(slots)) != len(slots):
@@ -146,7 +168,7 @@ def compare_ab_by_timestamp(
             timestamp, outcome = getattr(trade, "timestamp", None), getattr(trade, "r", None)
         if timestamp is None or outcome is None:
             raise ValueError("each trade must provide timestamp and r")
-        key = str(timestamp)
+        key = _timestamp_key(timestamp)
         value = float(outcome)
         if not isfinite(value):
             raise ValueError("trade outcomes must be finite numbers")
