@@ -73,3 +73,15 @@ def test_validation_gate_accepts_specialized_real_candidate_provenance():
         "stable_candidate_selected",
     ]
     assert passes_validation_gate(report)
+
+
+def test_shadow_ab_promotion_flag_cannot_override_hard_research_gates():
+    report = valid_report()
+    report["combined"]["expectancy"] = -0.01
+    report["shadow_ab"] = {
+        "promotion_candidate": True,
+        "execution_enabled": False,
+        "live": False,
+        "real": False,
+    }
+    assert not passes_validation_gate(report)
