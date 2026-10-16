@@ -115,3 +115,56 @@ def compare_ab(
         "live": False,
         "real": False,
     }
+
+
+def compare_ab_by_timestamp(
+    evaluation_timestamps: Iterable[str],
+    baseline_trades: Iterable[object],
+    candidate_trades: Iterable[object],
+    *,
+    min_samples: int = 100,
+) -> dict:
+    """Compare outcomes over the same explicit evaluation timestamps.
+
+    Each timestamp is one evaluation slot (normally each OOS bar). A strategy
+    with no trade at a slot receives 0R for that slot. Trade objects may expose
+    timestamp and r attributes or provide those keys in a mapping. Duplicate
+    slots, duplicate trades per slot, non-finite returns, and trades outside
+    the supplied window fail closed. Expectancy is per slot, not per trade.
+    """
+    slots = [str(value) for value in evaluation_timestamps]
+    if not slots:
+        raise ValueError("evaluation_timestamps must not be empty")
+    if len(set(slots)) != len(slots):
+        raise ValueError("evaluation_timestamps must be unique")
+    slot_set = set(slots)
+
+    def read_trade(trade: object) -> tuple[str, float]:
+        if isinstance(trade, dict):
+            timestamp, outcome = trade.get("timestamp"), trade.get("r")
+        else:
+            timestamp, outcome = getattr(trade, "timestamp", None), getattr(trade, "r", None)
+        if timestamp is None or outcome is None:
+            raise ValueError("each trade must provide timestamp and r")
+        key = str(timestamp)
+        value = float(outcome)
+        if not isfinite(value):
+            raise ValueError("trade outcomes must be finite numbers")
+        if key not in slot_set:
+            raise ValueError("trade timestamp is outside evaluation window")
+        return key, value
+
+    def align(trades: Iterable[object]) -> list[float]:
+        by_slot: dict[str, float] = {}
+        for trade in trades:
+            key, value = read_trade(trade)
+            if key in by_slot:
+                raise ValueError("at most one trade per evaluation timestamp is supported")
+            by_slot[key] = value
+        return [by_slot.get(slot, 0.0) for slot in slots]
+
+    result = compare_ab(align(baseline_trades), align(candidate_trades), min_samples=min_samples)
+    result["sample_unit"] = "evaluation_timestamp"
+    result["no_trade_outcome_r"] = 0.0
+    result["note"] = "Expectancy is per evaluation timestamp; not per-trade expectancy."
+    return result
