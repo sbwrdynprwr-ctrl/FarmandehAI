@@ -110,3 +110,23 @@ def test_timestamp_aligned_ab_fails_closed_on_bad_alignment():
             [{"timestamp": "2026-10-16T12:00:00Z", "r": 1.0}, {"timestamp": "2026-10-16 13:00:00+01:00", "r": -1.0}],
             [],
         )
+
+
+
+def test_shadow_signal_rejects_invalid_timestamp_and_missing_candidate():
+    invalid_time = evaluate_shadow_signal(
+        candidate="candidate-v1",
+        signal="BUY",
+        timestamp="not-a-timestamp",
+        risk_ok=True,
+    )
+    missing_candidate = evaluate_shadow_signal(
+        candidate=None,
+        signal="BUY",
+        timestamp="2026-10-16T12:00:00Z",
+        risk_ok=True,
+    )
+    assert invalid_time["eligible_for_shadow_review"] is False
+    assert "invalid_timestamp" in invalid_time["reasons"]
+    assert missing_candidate["eligible_for_shadow_review"] is False
+    assert "missing_candidate" in missing_candidate["reasons"]
