@@ -143,3 +143,16 @@ def test_specialized_selection_uses_declared_five_bps_gate():
     source = Path("backtest/research.py").read_text(encoding="utf-8")
     assert "selection_spread = SELECTION_SPREAD" in source
     assert "selection_spread=SELECTION_SPREAD" in source
+
+
+def test_specialized_selection_reports_rejection_diagnostics():
+    source = Path("backtest/research.py").read_text(encoding="utf-8")
+    runner = Path("holdout_runner.py").read_text(encoding="utf-8")
+    assert '"candidate_count_evaluated_for_robustness"' in source
+    assert '"robust_candidate_count"' in source
+    assert '"rejection_counts"' in source
+    assert '"selection_diagnostics"' in runner
+    # Diagnostics are observational only; the existing eligibility predicates remain intact.
+    assert 'gate_m_candidate["total_r"] > 0' in source
+    assert 'neighbor_positive_rate >= neighbor_floor' in source
+    assert 'neighbor_worst_slice_rate >= worst_slice_floor' in source

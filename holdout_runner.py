@@ -11,6 +11,7 @@ try:
     from data.loader import DataConfig, load_research_data
     from backtest.research import independent_holdout, walk_forward_search, robustness, monte_carlo
     from backtest.gates import validation_gate_details
+    from evaluation.shadow_ab import compare_ab_by_timestamp
 
     print("FARMANDEHAI_FETCH_START", flush=True)
     started = time.time()
@@ -62,6 +63,7 @@ try:
             and existing.get("combined") is not None
             and existing.get("robustness") is not None
             and existing.get("monte_carlo") is not None
+            and existing.get("shadow_ab") is not None
         ):
             print(f"ROBUSTNESS_WF_RESUME_COMPLETE={hypothesis}", flush=True)
             continue
@@ -86,6 +88,42 @@ try:
             )
             raise
         print(f"ROBUSTNESS_METRICS_DONE={hypothesis}", flush=True)
+
+        # Compare selected parameters with the fixed baseline on identical OOS
+        # timestamp slots. This is offline analysis only and never enables orders.
+        first_oos = max(1, int(len(df) * 0.5))
+        oos_size = (len(df) - first_oos) // len(folds)
+        evaluation_timestamps = []
+        baseline_trades = []
+        candidate_trades = []
+        for fold in folds:
+            fold_no = int(fold["fold"])
+            oos_start = first_oos + (fold_no - 1) * oos_size
+            oos_end = first_oos + fold_no * oos_size if fold_no < len(folds) else len(df)
+            # run_backtest_window starts signal evaluation at oos_start - 1
+            # so that a signal on the preceding bar may enter at the first OOS
+            # bar. Trade.timestamp records that signal bar (ts[i]), therefore
+            # align A/B slots to the exact signal timestamps used by the engine.
+            # The half-open slice has the same length as this fold's OOS window
+            # and adjacent folds remain non-overlapping.
+            evaluation_timestamps.extend(
+                str(value)
+                for value in df["timestamp"].to_numpy()[oos_start - 1:oos_end - 1]
+            )
+            baseline_trades.extend(fold["baseline_trades"])
+            candidate_trades.extend(fold["trades"])
+        shadow_ab = compare_ab_by_timestamp(
+            evaluation_timestamps,
+            baseline_trades,
+            candidate_trades,
+            min_samples=100,
+        )
+        print(
+            f"SHADOW_AB_RESULT={hypothesis}:"
+            f"{json.dumps(shadow_ab, default=str)}",
+            flush=True,
+        )
+
         print(f"MONTE_CARLO_START={hypothesis}", flush=True)
         mc = monte_carlo(
             [t.r for fold in folds for t in fold["trades"]],
@@ -103,8 +141,16 @@ try:
             "combined": combined,
             "robustness": rb,
             "monte_carlo": mc,
+            "shadow_ab": shadow_ab,
             "selection_statuses": [
                 fold.get("selection", {}).get("selection_status", "unknown")
+                for fold in folds
+            ],
+            "selection_diagnostics": [
+                {
+                    "fold": fold.get("fold"),
+                    **fold.get("selection", {}).get("selection_diagnostics", {}),
+                }
                 for fold in folds
             ],
         }
