@@ -45,15 +45,20 @@ def evaluate_shadow_signal(
     max_spread: float | None = None,
 ) -> dict:
     """Return an auditable shadow record; never an executable order."""
-    candidate_name = str(candidate).strip()
+    candidate_name = "" if candidate is None else str(candidate).strip()
     normalized_signal = str(signal).strip().upper()
     reasons: list[str] = []
     if not candidate_name:
         reasons.append("missing_candidate")
     if normalized_signal not in VALID_SIGNALS:
         reasons.append("invalid_signal")
-    if not timestamp:
+    if timestamp is None or not str(timestamp).strip():
         reasons.append("missing_timestamp")
+    else:
+        try:
+            _timestamp_key(timestamp)
+        except (TypeError, ValueError, OverflowError):
+            reasons.append("invalid_timestamp")
     if not risk_ok:
         reasons.append("risk_check_failed")
     if spread is not None and (not isfinite(spread) or spread < 0):
