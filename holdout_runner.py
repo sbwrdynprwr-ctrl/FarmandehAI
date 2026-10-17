@@ -146,6 +146,13 @@ try:
                 fold.get("selection", {}).get("selection_status", "unknown")
                 for fold in folds
             ],
+            "selection_diagnostics": [
+                {
+                    "fold": fold.get("fold"),
+                    **fold.get("selection", {}).get("selection_diagnostics", {}),
+                }
+                for fold in folds
+            ],
         }
         with open(validation_progress_path, "w", encoding="utf-8") as fp:
             json.dump(
