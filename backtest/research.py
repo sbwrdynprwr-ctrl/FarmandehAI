@@ -386,7 +386,16 @@ def select_params(
             # before the blind OOS gate gets to judge it. This avoids a training
             # prefilter becoming stricter than the declared final execution test.
             robust_ranked = []
+            rejection_counts = {
+                "activity_floor": 0,
+                "nonpositive_5bps_tune": 0,
+                "positive_slices": 0,
+                "neighbor_floor": 0,
+                "neighbor_worst_slice_floor": 0,
+            }
+            evaluated_candidate_count = 0
             for p, fit_m, stability, slice_metrics, neighbor_positive_rate, neighbor_worst_slice_rate, stress_neighbor_positive_rate, stress_neighbor_worst_slice_rate in stable:
+                evaluated_candidate_count += 1
                 tune_x = indicators(tune, p)
                 tune_m_candidate = metrics([
                     t.r for t in _run_backtest_indicators(tune_x, p, spread=selection_spread)
@@ -404,13 +413,20 @@ def select_params(
                 neighbor_floor = 0.75 if hypothesis in ("mean_reversion_v2", "mean_reversion_robust") else (0.50 if hypothesis == "mean_reversion_costaware" else 0.0)
                 worst_slice_floor = 0.50 if hypothesis in ("mean_reversion_v2", "mean_reversion_robust", "mean_reversion_costaware") else 0.0
                 stress_neighbor_floor = 0.50 if hypothesis in ("mean_reversion_v2", "mean_reversion_robust", "mean_reversion_costaware") else 0.0
-                if (
-                    tune_m_candidate["trades"] >= activity_floor
-                    and gate_m_candidate["total_r"] > 0
-                    and positive_slices >= 2
-                    and neighbor_positive_rate >= neighbor_floor
-                    and neighbor_worst_slice_rate >= worst_slice_floor
-                ):
+                rejection_reasons = []
+                if tune_m_candidate["trades"] < activity_floor:
+                    rejection_reasons.append("activity_floor")
+                if gate_m_candidate["total_r"] <= 0:
+                    rejection_reasons.append("nonpositive_5bps_tune")
+                if positive_slices < 2:
+                    rejection_reasons.append("positive_slices")
+                if neighbor_positive_rate < neighbor_floor:
+                    rejection_reasons.append("neighbor_floor")
+                if neighbor_worst_slice_rate < worst_slice_floor:
+                    rejection_reasons.append("neighbor_worst_slice_floor")
+                for reason in rejection_reasons:
+                    rejection_counts[reason] += 1
+                if not rejection_reasons:
                     robust_ranked.append(
                         (p, fit_m, stability, slice_metrics, gate_m_candidate,
                          neighbor_positive_rate, neighbor_worst_slice_rate,
@@ -492,6 +508,15 @@ def select_params(
         "selection_score": _score(tune_m),
         "selection_spread": selection_spread,
         "selection_status": selection_status,
+        "selection_diagnostics": (
+            {
+                "candidate_count_evaluated_for_robustness": evaluated_candidate_count,
+                "robust_candidate_count": len(robust_ranked),
+                "rejection_counts": rejection_counts,
+            }
+            if hypothesis in ("mean_reversion_v2", "mean_reversion_rr", "mean_reversion_robust", "mean_reversion_costaware", "mean_reversion_band", "mean_reversion_regime")
+            else {}
+        ),
     }
 
 
