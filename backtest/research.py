@@ -426,7 +426,14 @@ def select_params(
                     rejection_reasons.append("neighbor_worst_slice_floor")
                 for reason in rejection_reasons:
                     rejection_counts[reason] += 1
-                if not rejection_reasons:
+                # Keep explicit hard-gate predicate unchanged; diagnostics only explain rejections.
+                if (
+                    tune_m_candidate["trades"] >= activity_floor
+                    and gate_m_candidate["total_r"] > 0
+                    and positive_slices >= 2
+                    and neighbor_positive_rate >= neighbor_floor
+                    and neighbor_worst_slice_rate >= worst_slice_floor
+                ):
                     robust_ranked.append(
                         (p, fit_m, stability, slice_metrics, gate_m_candidate,
                          neighbor_positive_rate, neighbor_worst_slice_rate,
