@@ -21,6 +21,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 60
     env:
+      FARMANDEHAI_BUILD: "cost-robust-search-v2"
       PAPER: "true"
       LIVE: "false"
       REAL: "false"
